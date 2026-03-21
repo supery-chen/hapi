@@ -1,71 +1,44 @@
-import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { ApiClient } from '@/api/client'
-import type { SlashCommand } from '@/types/api'
+import type { SlashCommandDefinition } from '@/types/api'
 import type { Suggestion } from '@/hooks/useActiveSuggestions'
 import { queryKeys } from '@/lib/query-keys'
 
 function levenshteinDistance(a: string, b: string): number {
+    if (a === b) return 0
     if (a.length === 0) return b.length
     if (b.length === 0) return a.length
-    const matrix: number[][] = []
-    for (let i = 0; i <= b.length; i++) matrix[i] = [i]
-    for (let j = 0; j <= a.length; j++) matrix[0][j] = j
-    for (let i = 1; i <= b.length; i++) {
-        for (let j = 1; j <= a.length; j++) {
-            matrix[i][j] = b[i - 1] === a[j - 1]
-                ? matrix[i - 1][j - 1]
-                : Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+
+    const matrix = Array.from({ length: b.length + 1 }, (_, i) =>
+        Array.from({ length: a.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+    )
+
+    for (let i = 1; i <= b.length; i += 1) {
+        for (let j = 1; j <= a.length; j += 1) {
+            const cost = a[j - 1] === b[i - 1] ? 0 : 1
+            matrix[i]![j] = Math.min(
+                matrix[i - 1]![j]! + 1,
+                matrix[i]![j - 1]! + 1,
+                matrix[i - 1]![j - 1]! + cost
+            )
         }
     }
-    return matrix[b.length][a.length]
-}
 
-/**
- * Built-in slash commands per agent type.
- * These are shown immediately without waiting for RPC.
- */
-const BUILTIN_COMMANDS: Record<string, SlashCommand[]> = {
-    claude: [
-        { name: 'clear', description: 'Clear conversation history and free up context', source: 'builtin' },
-        { name: 'compact', description: 'Clear conversation history but keep a summary in context', source: 'builtin' },
-        { name: 'context', description: 'Visualize current context usage as a colored grid', source: 'builtin' },
-        { name: 'cost', description: 'Show the total cost and duration of the current session', source: 'builtin' },
-        { name: 'doctor', description: 'Diagnose and verify your Claude Code installation and settings', source: 'builtin' },
-        { name: 'plan', description: 'View or open the current session plan', source: 'builtin' },
-        { name: 'stats', description: 'Show your Claude Code usage statistics and activity', source: 'builtin' },
-        { name: 'status', description: 'Show Claude Code status including version, model, account, and API connectivity', source: 'builtin' },
-    ],
-    codex: [
-        { name: 'review', description: 'Review current changes and find issues', source: 'builtin' },
-        { name: 'new', description: 'Start a new chat during a conversation', source: 'builtin' },
-        { name: 'compat', description: 'Summarize conversation to prevent hitting the context limit', source: 'builtin' },
-        { name: 'undo', description: 'Ask Codex to undo a turn', source: 'builtin' },
-        { name: 'diff', description: 'Show git diff including untracked files', source: 'builtin' },
-        { name: 'status', description: 'Show current session configuration and token usage', source: 'builtin' },
-    ],
-    gemini: [
-        { name: 'about', description: 'Show version info', source: 'builtin' },
-        { name: 'clear', description: 'Clear the screen and conversation history', source: 'builtin' },
-        { name: 'compress', description: 'Compress the context by replacing it with a summary', source: 'builtin' },
-        { name: 'stats', description: 'Check session stats', source: 'builtin' },
-    ],
-    opencode: [],
+    return matrix[b.length]![a.length]!
 }
 
 export function useSlashCommands(
     api: ApiClient | null,
-    sessionId: string | null,
-    agentType: string = 'claude'
+    sessionId: string | null
 ): {
-    commands: SlashCommand[]
+    commands: SlashCommandDefinition[]
     isLoading: boolean
     error: string | null
     getSuggestions: (query: string) => Promise<Suggestion[]>
 } {
     const resolvedSessionId = sessionId ?? 'unknown'
 
-    // Fetch user-defined commands from the CLI (requires active session)
     const query = useQuery({
         queryKey: queryKeys.slashCommands(resolvedSessionId),
         queryFn: async () => {
@@ -77,24 +50,15 @@ export function useSlashCommands(
         enabled: Boolean(api && sessionId),
         staleTime: Infinity,
         gcTime: 30 * 60 * 1000,
-        retry: false, // Don't retry RPC failures
+        retry: false,
     })
 
-    // Merge built-in commands with user-defined and plugin commands from API
     const commands = useMemo(() => {
-        const builtin = BUILTIN_COMMANDS[agentType] ?? BUILTIN_COMMANDS['claude'] ?? []
-
-        // If API succeeded, add user-defined and plugin commands
-        if (query.data?.success && query.data.commands) {
-            const extraCommands = query.data.commands.filter(
-                cmd => cmd.source === 'user' || cmd.source === 'plugin' || cmd.source === 'project'
-            )
-            return [...builtin, ...extraCommands]
+        if (!query.data?.success || !query.data.commands) {
+            return []
         }
-
-        // Fallback to built-in commands only
-        return builtin
-    }, [agentType, query.data])
+        return query.data.commands
+    }, [query.data])
 
     const getSuggestions = useCallback(async (queryText: string): Promise<Suggestion[]> => {
         const searchTerm = queryText.startsWith('/')
@@ -102,46 +66,50 @@ export function useSlashCommands(
             : queryText.toLowerCase()
 
         if (!searchTerm) {
-            return commands.map(cmd => ({
-                key: `/${cmd.name}`,
-                text: `/${cmd.name}`,
-                label: `/${cmd.name}`,
-                description: cmd.description ?? (cmd.source === 'user' ? 'Custom command' : undefined),
-                content: cmd.content,
-                source: cmd.source
+            return commands.map((command) => ({
+                key: `/${command.name}`,
+                text: `/${command.name}`,
+                label: `/${command.name}`,
+                description: command.description,
+                content: command.content,
+                source: command.source,
+                kind: command.kind,
+                argPolicy: command.argPolicy
             }))
         }
 
         const maxDistance = Math.max(2, Math.floor(searchTerm.length / 2))
         return commands
-            .map(cmd => {
-                const name = cmd.name.toLowerCase()
+            .map((command) => {
+                const name = command.name.toLowerCase()
                 let score: number
                 if (name === searchTerm) score = 0
                 else if (name.startsWith(searchTerm)) score = 1
                 else if (name.includes(searchTerm)) score = 2
                 else {
-                    const dist = levenshteinDistance(searchTerm, name)
-                    score = dist <= maxDistance ? 3 + dist : Infinity
+                    const distance = levenshteinDistance(searchTerm, name)
+                    score = distance <= maxDistance ? 3 + distance : Number.POSITIVE_INFINITY
                 }
-                return { cmd, score }
+                return { command, score }
             })
-            .filter(item => item.score < Infinity)
-            .sort((a, b) => a.score - b.score)
-            .map(({ cmd }) => ({
-                key: `/${cmd.name}`,
-                text: `/${cmd.name}`,
-                label: `/${cmd.name}`,
-                description: cmd.description ?? (cmd.source === 'user' ? 'Custom command' : undefined),
-                content: cmd.content,
-                source: cmd.source
+            .filter((entry) => Number.isFinite(entry.score))
+            .sort((left, right) => left.score - right.score)
+            .map(({ command }) => ({
+                key: `/${command.name}`,
+                text: `/${command.name}`,
+                label: `/${command.name}`,
+                description: command.description,
+                content: command.content,
+                source: command.source,
+                kind: command.kind,
+                argPolicy: command.argPolicy
             }))
     }, [commands])
 
     return {
         commands,
         isLoading: query.isLoading,
-        error: query.error instanceof Error ? query.error.message : query.error ? 'Failed to load commands' : null,
+        error: query.error instanceof Error ? query.error.message : null,
         getSuggestions,
     }
 }

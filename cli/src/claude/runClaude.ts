@@ -16,9 +16,18 @@ import { bootstrapSession } from '@/agent/sessionFactory';
 import { createModeChangeHandler, createRunnerLifecycle, setControlledByUser } from '@/agent/runnerLifecycle';
 import { isPermissionModeAllowedForFlavor } from '@hapi/protocol';
 import { PermissionModeSchema } from '@hapi/protocol/schemas';
+import {
+    type ExecuteSlashCommandRequest,
+    type ExecuteSlashCommandResponse,
+    type SlashCommandDefinition,
+    type SlashCommandsResponse,
+    ExecuteSlashCommandRequestSchema,
+    parseSlashCommandInput
+} from '@hapi/protocol/slashCommands';
 import { formatMessageWithAttachments } from '@/utils/attachmentFormatter';
 import { normalizeClaudeSessionModel } from './model';
 import { getInvokedCwd } from '@/utils/invokedCwd';
+import { listSlashCommands as listPromptSlashCommands } from '@/modules/common/slashCommands';
 
 export interface StartOptions {
     model?: string
@@ -154,6 +163,47 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
     let currentAllowedTools: string[] | undefined = undefined; // Track current allowed tools
     let currentDisallowedTools: string[] | undefined = undefined; // Track current disallowed tools
 
+    const buildEnhancedMode = (): EnhancedMode => ({
+        permissionMode: currentPermissionMode ?? 'default',
+        model: currentModel ?? undefined,
+        fallbackModel: currentFallbackModel,
+        customSystemPrompt: currentCustomSystemPrompt,
+        appendSystemPrompt: currentAppendSystemPrompt,
+        allowedTools: currentAllowedTools,
+        disallowedTools: currentDisallowedTools
+    });
+
+    const buildCommandList = async (): Promise<SlashCommandDefinition[]> => {
+        const builtinCommands: SlashCommandDefinition[] = [
+            {
+                name: 'clear',
+                description: 'Clear conversation history',
+                source: 'builtin',
+                kind: 'action',
+                availability: 'both',
+                argPolicy: 'none',
+                webSupported: true,
+                discoverable: true
+            },
+            {
+                name: 'compact',
+                description: 'Compact conversation context',
+                source: 'builtin',
+                kind: 'action',
+                availability: 'both',
+                argPolicy: 'raw-tail',
+                webSupported: true,
+                discoverable: true
+            }
+        ];
+        const promptCommands = await listPromptSlashCommands('claude', workingDirectory);
+        const builtinNames = new Set(builtinCommands.map((command) => command.name));
+        return [
+            ...builtinCommands,
+            ...promptCommands.filter((command) => !builtinNames.has(command.name))
+        ];
+    };
+
     const syncSessionModes = () => {
         const sessionInstance = currentSessionRef.current;
         if (!sessionInstance) {
@@ -163,6 +213,92 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
         sessionInstance.setModel(currentModel);
         logger.debug(`[loop] Synced session config for keepalive: permissionMode=${currentPermissionMode}, model=${currentModel ?? 'auto'}`);
     };
+
+    session.rpcHandlerManager.registerHandler<undefined, SlashCommandsResponse>('listSlashCommands', async () => {
+        const commands = await buildCommandList();
+        return { success: true, commands };
+    });
+
+    session.rpcHandlerManager.registerHandler<ExecuteSlashCommandRequest, ExecuteSlashCommandResponse>('executeSlashCommand', async (payload) => {
+        const parsedPayload = ExecuteSlashCommandRequestSchema.safeParse(payload);
+        if (!parsedPayload.success) {
+            return {
+                ok: false,
+                code: 'invalid-arguments',
+                message: 'Invalid slash command payload'
+            };
+        }
+
+        const parsedInput = parseSlashCommandInput(parsedPayload.data.rawInput);
+        if (parsedInput.kind !== 'slash') {
+            return {
+                ok: false,
+                code: 'not-found',
+                message: 'Input is not a slash command'
+            };
+        }
+
+        const commands = await buildCommandList();
+        const command = commands.find((candidate) => candidate.name === parsedInput.commandName);
+        if (!command) {
+            return {
+                ok: false,
+                code: 'not-found',
+                message: `Unknown slash command: /${parsedInput.commandName}`
+            };
+        }
+
+        if (command.argPolicy === 'none' && parsedInput.rawTail) {
+            return {
+                ok: false,
+                code: 'invalid-arguments',
+                message: `/${command.name} does not accept arguments`
+            };
+        }
+
+        session.sendUserMessage(parsedInput.rawInput, {
+            sentFrom: parsedPayload.data.source,
+            transport: 'slash-command',
+            commandName: command.name
+        });
+
+        if (command.kind === 'action' && command.name === 'clear') {
+            messageQueue.pushIsolateAndClear(parsedInput.rawInput, buildEnhancedMode());
+            return {
+                ok: true,
+                handled: true,
+                commandName: command.name,
+                emittedMessages: true
+            };
+        }
+
+        if (command.kind === 'action' && command.name === 'compact') {
+            messageQueue.pushIsolateAndClear(parsedInput.rawInput, buildEnhancedMode());
+            return {
+                ok: true,
+                handled: true,
+                commandName: command.name,
+                emittedMessages: true
+            };
+        }
+
+        if (command.kind === 'prompt-template' && command.content) {
+            messageQueue.push(command.content, buildEnhancedMode());
+            return {
+                ok: true,
+                handled: true,
+                commandName: command.name,
+                emittedMessages: true
+            };
+        }
+
+        return {
+            ok: false,
+            code: 'unsupported',
+            message: `/${command.name} is not supported by the web executor`
+        };
+    });
+
     session.onUserMessage((message) => {
         const sessionPermissionMode = currentSessionRef.current?.getPermissionMode();
         if (sessionPermissionMode && isPermissionModeAllowedForFlavor(sessionPermissionMode, 'claude')) {

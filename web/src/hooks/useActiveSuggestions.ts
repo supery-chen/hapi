@@ -5,8 +5,10 @@ export interface Suggestion {
     text: string
     label: string
     description?: string
-    content?: string  // Expanded content for Codex user prompts
+    content?: string
     source?: 'builtin' | 'user' | 'plugin' | 'project'
+    kind?: 'action' | 'prompt-template'
+    argPolicy?: 'none' | 'raw-tail'
 }
 
 interface SuggestionOptions {

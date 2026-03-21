@@ -288,7 +288,12 @@ export class AcpSdkBackend implements AgentBackend {
         while (Date.now() < deadline) {
             const elapsedSinceUpdate = Date.now() - this.lastSessionUpdateAt;
             if (elapsedSinceUpdate >= quietMs) {
-                return;
+                await new Promise<void>((resolve) => setTimeout(resolve, 0));
+                const elapsedAfterYield = Date.now() - this.lastSessionUpdateAt;
+                if (elapsedAfterYield >= quietMs) {
+                    return;
+                }
+                continue;
             }
 
             const remainingToQuiet = quietMs - elapsedSinceUpdate;

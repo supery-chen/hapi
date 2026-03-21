@@ -1,4 +1,9 @@
 import type { CodexCollaborationMode, PermissionMode } from '@hapi/protocol/types'
+import type {
+    ExecuteSlashCommandResponse,
+    SlashCommandDefinition,
+    SlashCommandsResponse
+} from '@hapi/protocol/slashCommands'
 import type { Server } from 'socket.io'
 import type { RpcRegistry } from '../socket/rpcRegistry'
 
@@ -206,14 +211,17 @@ export class RpcGateway {
 
     async listSlashCommands(sessionId: string, agent: string): Promise<{
         success: boolean
-        commands?: Array<{ name: string; description?: string; source: 'builtin' | 'user' | 'plugin' | 'project' }>
+        commands?: SlashCommandDefinition[]
         error?: string
     }> {
-        return await this.sessionRpc(sessionId, 'listSlashCommands', { agent }) as {
-            success: boolean
-            commands?: Array<{ name: string; description?: string; source: 'builtin' | 'user' | 'plugin' | 'project' }>
-            error?: string
-        }
+        return await this.sessionRpc(sessionId, 'listSlashCommands', { agent }) as SlashCommandsResponse
+    }
+
+    async executeSlashCommand(
+        sessionId: string,
+        payload: { rawInput: string; source: 'webapp' | 'telegram' | 'voice' }
+    ): Promise<ExecuteSlashCommandResponse> {
+        return await this.sessionRpc(sessionId, 'executeSlashCommand', payload) as ExecuteSlashCommandResponse
     }
 
     async listSkills(sessionId: string): Promise<{

@@ -8,6 +8,12 @@
  */
 
 import type { CodexCollaborationMode, DecryptedMessage, PermissionMode, Session, SyncEvent } from '@hapi/protocol/types'
+import { parseSlashCommandInput } from '@hapi/protocol/slashCommands'
+import type {
+    ExecuteSlashCommandResponse,
+    SlashCommandDefinition,
+    SlashCommandsResponse
+} from '@hapi/protocol/slashCommands'
 import type { Server } from 'socket.io'
 import type { Store } from '../store'
 import type { RpcRegistry } from '../socket/rpcRegistry'
@@ -238,6 +244,58 @@ export class SyncEngine {
         await this.messageService.sendMessage(sessionId, payload)
     }
 
+    async submitInput(
+        sessionId: string,
+        payload: {
+            text: string
+            localId?: string | null
+            attachments?: Array<{
+                id: string
+                filename: string
+                mimeType: string
+                size: number
+                path: string
+                previewUrl?: string
+            }>
+            sentFrom?: 'telegram-bot' | 'webapp'
+        }
+    ): Promise<
+        | { ok: true; kind: 'message' }
+        | { ok: true; kind: 'slash-command'; commandName: string }
+    > {
+        const parsed = parseSlashCommandInput(payload.text)
+        if (parsed.kind === 'escaped') {
+            await this.messageService.sendMessage(sessionId, {
+                ...payload,
+                text: parsed.text
+            })
+            return { ok: true, kind: 'message' }
+        }
+
+        const hasAttachments = Array.isArray(payload.attachments) && payload.attachments.length > 0
+        if (parsed.kind === 'slash' && !hasAttachments) {
+            try {
+                const result = await this.executeSlashCommand(sessionId, {
+                    rawInput: parsed.rawInput,
+                    source: payload.sentFrom === 'telegram-bot' ? 'telegram' : 'webapp'
+                })
+                if (result.ok) {
+                    return { ok: true, kind: 'slash-command', commandName: result.commandName }
+                }
+                if (result.code !== 'not-found') {
+                    throw new Error(result.message)
+                }
+            } catch (error) {
+                if (!(error instanceof Error) || !error.message.includes('RPC handler not registered')) {
+                    throw error
+                }
+            }
+        }
+
+        await this.messageService.sendMessage(sessionId, payload)
+        return { ok: true, kind: 'message' }
+    }
+
     async approvePermission(
         sessionId: string,
         requestId: string,
@@ -459,10 +517,17 @@ export class SyncEngine {
 
     async listSlashCommands(sessionId: string, agent: string): Promise<{
         success: boolean
-        commands?: Array<{ name: string; description?: string; source: 'builtin' | 'user' | 'plugin' | 'project' }>
+        commands?: SlashCommandDefinition[]
         error?: string
     }> {
-        return await this.rpcGateway.listSlashCommands(sessionId, agent)
+        return await this.rpcGateway.listSlashCommands(sessionId, agent) as SlashCommandsResponse
+    }
+
+    async executeSlashCommand(
+        sessionId: string,
+        payload: { rawInput: string; source: 'webapp' | 'telegram' | 'voice' }
+    ): Promise<ExecuteSlashCommandResponse> {
+        return await this.rpcGateway.executeSlashCommand(sessionId, payload)
     }
 
     async listSkills(sessionId: string): Promise<{

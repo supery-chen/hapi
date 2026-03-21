@@ -297,11 +297,14 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                 messageBuffer.addMessage('Starting task...', 'status');
             } else if (msgType === 'task_complete') {
                 messageBuffer.addMessage('Task completed', 'status');
+                session.setCurrentTurnId?.(null);
             } else if (msgType === 'turn_aborted') {
                 messageBuffer.addMessage('Turn aborted', 'status');
+                session.setCurrentTurnId?.(null);
             } else if (msgType === 'task_failed') {
                 const error = asString(msg.error);
                 messageBuffer.addMessage(error ? `Task failed: ${error}` : 'Task failed', 'status');
+                session.setCurrentTurnId?.(null);
             }
 
             if (msgType === 'task_started') {
@@ -391,10 +394,7 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                 }
             }
             if (msgType === 'token_count') {
-                session.sendAgentMessage({
-                    ...msg,
-                    id: randomUUID()
-                });
+                session.setLatestTokenUsage?.(asRecord(msg.info) ?? null);
             }
             if (msgType === 'patch_apply_begin') {
                 const callId = asString(msg.call_id ?? msg.callId);
@@ -669,6 +669,7 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                 const turnId = asString(turn?.id);
                 if (turnId) {
                     this.currentTurnId = turnId;
+                    session.setCurrentTurnId?.(turnId);
                 } else if (!this.currentTurnId) {
                     allowAnonymousTerminalEvent = true;
                 }
@@ -678,6 +679,7 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                 turnInFlight = false;
                 allowAnonymousTerminalEvent = false;
                 this.currentTurnId = null;
+                session.setCurrentTurnId?.(null);
 
                 if (isAbortError) {
                     messageBuffer.addMessage('Aborted by user', 'status');

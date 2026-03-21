@@ -83,7 +83,10 @@ export async function codexLocalLauncher(session: CodexSession): Promise<'switch
             if (converted?.userMessage) {
                 session.sendUserMessage(converted.userMessage);
             }
-            if (converted?.message) {
+            if (converted?.message?.type === 'token_count') {
+                session.setLatestTokenUsage?.(converted.message.info);
+            }
+            if (converted?.message && converted.message.type !== 'token_count') {
                 session.sendAgentMessage(converted.message);
             }
         }

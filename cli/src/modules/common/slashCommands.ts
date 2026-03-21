@@ -2,44 +2,14 @@ import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { homedir } from 'os';
 import { parse as parseYaml } from 'yaml';
+import type {
+    SlashCommandDefinition,
+    SlashCommandsResponse
+} from '@hapi/protocol/slashCommands';
 
-export interface SlashCommand {
-    name: string;
-    description?: string;
-    source: 'builtin' | 'user' | 'plugin' | 'project';
-    content?: string;  // Expanded content for Codex user prompts
-    pluginName?: string;  // Name of the plugin that provides this command
-}
-
-export interface ListSlashCommandsRequest {
-    agent: string;
-}
-
-export interface ListSlashCommandsResponse {
-    success: boolean;
-    commands?: SlashCommand[];
-    error?: string;
-}
-
-/**
- * Built-in slash commands for each agent type.
- */
-const BUILTIN_COMMANDS: Record<string, SlashCommand[]> = {
-    claude: [
-        { name: 'clear', description: 'Clear conversation history', source: 'builtin' },
-        { name: 'compact', description: 'Compact conversation context', source: 'builtin' },
-        { name: 'context', description: 'Show context information', source: 'builtin' },
-        { name: 'cost', description: 'Show session cost', source: 'builtin' },
-        { name: 'plan', description: 'Toggle plan mode', source: 'builtin' },
-    ],
-    codex: [],
-    gemini: [
-        { name: 'about', description: 'About Gemini', source: 'builtin' },
-        { name: 'clear', description: 'Clear conversation', source: 'builtin' },
-        { name: 'compress', description: 'Compress context', source: 'builtin' },
-    ],
-    opencode: [],
-};
+export type SlashCommand = SlashCommandDefinition
+export type ListSlashCommandsRequest = { agent: string }
+export type ListSlashCommandsResponse = SlashCommandsResponse
 
 /**
  * Interface for installed_plugins.json structure
@@ -123,15 +93,15 @@ async function scanCommandsDir(
     dir: string,
     source: 'user' | 'plugin' | 'project',
     pluginName?: string
-): Promise<SlashCommand[]> {
-    async function scanRecursive(currentDir: string, segments: string[]): Promise<SlashCommand[]> {
+): Promise<SlashCommandDefinition[]> {
+    async function scanRecursive(currentDir: string, segments: string[]): Promise<SlashCommandDefinition[]> {
         const entries = await readdir(currentDir, { withFileTypes: true }).catch(() => null);
         if (!entries) {
             return [];
         }
 
         const commandsByEntry = await Promise.all(
-            entries.map(async (entry): Promise<SlashCommand[]> => {
+            entries.map(async (entry): Promise<SlashCommandDefinition[]> => {
                 if (entry.name.startsWith('.') || entry.isSymbolicLink()) {
                     return [];
                 }
@@ -163,6 +133,11 @@ async function scanCommandsDir(
                         name,
                         description: parsed.description ?? fallbackDescription,
                         source,
+                        kind: 'prompt-template',
+                        availability: 'both',
+                        argPolicy: 'none',
+                        webSupported: true,
+                        discoverable: true,
                         content: parsed.content,
                         pluginName,
                     }];
@@ -171,6 +146,11 @@ async function scanCommandsDir(
                         name,
                         description: fallbackDescription,
                         source,
+                        kind: 'prompt-template',
+                        availability: 'both',
+                        argPolicy: 'none',
+                        webSupported: true,
+                        discoverable: true,
                         pluginName,
                     }];
                 }
@@ -272,8 +252,6 @@ async function scanPluginCommands(agent: string): Promise<SlashCommand[]> {
  * built-in -> global user -> plugin -> project (project overrides same-name globals).
  */
 export async function listSlashCommands(agent: string, projectDir?: string): Promise<SlashCommand[]> {
-    const builtin = BUILTIN_COMMANDS[agent] ?? [];
-
     // Scan all command sources in parallel
     const [user, plugin, project] = await Promise.all([
         scanUserCommands(agent),
@@ -281,7 +259,7 @@ export async function listSlashCommands(agent: string, projectDir?: string): Pro
         scanProjectCommands(agent, projectDir),
     ]);
 
-    const allCommands = [...builtin, ...user, ...plugin, ...project];
+    const allCommands = [...user, ...plugin, ...project];
 
     // Keep insertion order while allowing latter commands to override prior ones.
     const commandMap = new Map<string, SlashCommand>();

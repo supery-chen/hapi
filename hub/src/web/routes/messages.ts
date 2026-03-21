@@ -69,5 +69,47 @@ export function createMessagesRoutes(getSyncEngine: () => SyncEngine | null): Ho
         return c.json({ ok: true })
     })
 
+    app.post('/sessions/:id/input', async (c) => {
+        const engine = requireSyncEngine(c, getSyncEngine)
+        if (engine instanceof Response) {
+            return engine
+        }
+
+        const sessionResult = requireSessionFromParam(c, engine, { requireActive: true })
+        if (sessionResult instanceof Response) {
+            return sessionResult
+        }
+        const sessionId = sessionResult.sessionId
+
+        const body = await c.req.json().catch(() => null)
+        const parsed = sendMessageBodySchema.safeParse(body)
+        if (!parsed.success) {
+            return c.json({ error: 'Invalid body' }, 400)
+        }
+
+        if (!parsed.data.text && (!parsed.data.attachments || parsed.data.attachments.length === 0)) {
+            return c.json({ error: 'Message requires text or attachments' }, 400)
+        }
+
+        try {
+            const result = await engine.submitInput(sessionId, {
+                text: parsed.data.text,
+                localId: parsed.data.localId,
+                attachments: parsed.data.attachments,
+                sentFrom: 'webapp'
+            })
+            return c.json(result)
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to submit input'
+            if (message.includes('does not accept arguments')) {
+                return c.json({ error: message }, 400)
+            }
+            if (message.includes('only available')) {
+                return c.json({ error: message }, 409)
+            }
+            return c.json({ error: message }, 500)
+        }
+    })
+
     return app
 }

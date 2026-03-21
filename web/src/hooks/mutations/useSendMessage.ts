@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
+import { parseSlashCommandInput } from '@hapi/protocol/slashCommands'
 import type { ApiClient } from '@/api/client'
 import type { AttachmentMetadata, DecryptedMessage } from '@/types/api'
 import { makeClientSideId } from '@/lib/messages'
@@ -13,9 +14,11 @@ import { usePlatform } from '@/hooks/usePlatform'
 type SendMessageInput = {
     sessionId: string
     text: string
+    optimisticText: string
     localId: string
     createdAt: number
     attachments?: AttachmentMetadata[]
+    optimistic: boolean
 }
 
 type BlockedReason = 'no-api' | 'no-session' | 'pending'
@@ -58,9 +61,12 @@ export function useSendMessage(
             if (!api) {
                 throw new Error('API unavailable')
             }
-            await api.sendMessage(input.sessionId, input.text, input.localId, input.attachments)
+            await api.submitInput(input.sessionId, input.text, input.localId, input.attachments)
         },
         onMutate: async (input) => {
+            if (!input.optimistic) {
+                return
+            }
             const optimisticMessage: DecryptedMessage = {
                 id: input.localId,
                 seq: null,
@@ -69,7 +75,7 @@ export function useSendMessage(
                     role: 'user',
                     content: {
                         type: 'text',
-                        text: input.text,
+                        text: input.optimisticText,
                         attachments: input.attachments
                     }
                 },
@@ -81,11 +87,15 @@ export function useSendMessage(
             appendOptimisticMessage(input.sessionId, optimisticMessage)
         },
         onSuccess: (_, input) => {
-            updateMessageStatus(input.sessionId, input.localId, 'sent')
+            if (input.optimistic) {
+                updateMessageStatus(input.sessionId, input.localId, 'sent')
+            }
             haptic.notification('success')
         },
         onError: (_, input) => {
-            updateMessageStatus(input.sessionId, input.localId, 'failed')
+            if (input.optimistic) {
+                updateMessageStatus(input.sessionId, input.localId, 'failed')
+            }
             haptic.notification('error')
         },
     })
@@ -107,6 +117,9 @@ export function useSendMessage(
         }
         const localId = makeClientSideId('local')
         const createdAt = Date.now()
+        const parsedInput = parseSlashCommandInput(text)
+        const isSlashCommand = (!attachments || attachments.length === 0) && parsedInput.kind === 'slash'
+        const optimisticText = parsedInput.kind === 'escaped' ? parsedInput.text : text
         void (async () => {
             let targetSessionId = sessionId
             if (options?.resolveSessionId) {
@@ -130,9 +143,11 @@ export function useSendMessage(
             mutation.mutate({
                 sessionId: targetSessionId,
                 text,
+                optimisticText,
                 localId,
                 createdAt,
                 attachments,
+                optimistic: !isSlashCommand,
             })
         })()
     }
@@ -161,8 +176,10 @@ export function useSendMessage(
         mutation.mutate({
             sessionId,
             text: message.originalText,
+            optimisticText: message.originalText,
             localId,
             createdAt: message.createdAt,
+            optimistic: true,
         })
     }
 

@@ -17,6 +17,7 @@ import type {
     SlashCommandsResponse,
     SkillsResponse,
     SpawnResponse,
+    SubmitInputResponse,
     UploadFileResponse,
     VisibilityPayload,
     SessionResponse,
@@ -276,6 +277,17 @@ export class ApiClient {
 
     async sendMessage(sessionId: string, text: string, localId?: string | null, attachments?: AttachmentMetadata[]): Promise<void> {
         await this.request(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
+            method: 'POST',
+            body: JSON.stringify({
+                text,
+                localId: localId ?? undefined,
+                attachments: attachments ?? undefined
+            })
+        })
+    }
+
+    async submitInput(sessionId: string, text: string, localId?: string | null, attachments?: AttachmentMetadata[]): Promise<SubmitInputResponse> {
+        return await this.request<SubmitInputResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/input`, {
             method: 'POST',
             body: JSON.stringify({
                 text,

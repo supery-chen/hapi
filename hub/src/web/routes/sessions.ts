@@ -400,6 +400,12 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
 
         try {
             const result = await engine.listSlashCommands(sessionResult.sessionId, agent)
+            if (result.success && result.commands) {
+                return c.json({
+                    success: true,
+                    commands: result.commands.filter((command) => command.webSupported && command.discoverable)
+                })
+            }
             return c.json(result)
         } catch (error) {
             return c.json({

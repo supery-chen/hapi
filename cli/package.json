@@ -34,6 +34,7 @@
   },
   "scripts": {
     "postinstall": "node -e \"try{require('fs').chmodSync(require('path').join(__dirname,'bin','hapi.cjs'),0o755)}catch(e){}\"",
+    "build": "bun run scripts/write-embedded-assets-stub.ts && bun build src/bootstrap.ts --outdir dist --target bun",
     "typecheck": "tsc --noEmit",
     "build:exe": "bun run scripts/build-executable.ts",
     "build:exe:all": "bun run scripts/build-executable.ts --all",

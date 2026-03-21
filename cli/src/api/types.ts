@@ -125,6 +125,8 @@ export type CreateMachineResponse = z.infer<typeof CreateMachineResponseSchema>
 
 export const MessageMetaSchema = z.object({
     sentFrom: z.string().optional(),
+    transport: z.string().optional(),
+    commandName: z.string().optional(),
     fallbackModel: z.string().nullable().optional(),
     customSystemPrompt: z.string().nullable().optional(),
     appendSystemPrompt: z.string().nullable().optional(),

@@ -17,6 +17,8 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
     readonly startedBy: 'runner' | 'terminal';
     readonly startingMode: 'local' | 'remote';
     localLaunchFailure: LocalLaunchFailure | null = null;
+    private latestTokenUsage: Record<string, unknown> | null = null;
+    private currentTurnId: string | null = null;
 
     constructor(opts: {
         api: ApiClient;
@@ -78,6 +80,22 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
 
     recordLocalLaunchFailure = (message: string, exitReason: LocalLaunchExitReason): void => {
         this.localLaunchFailure = { message, exitReason };
+    };
+
+    setLatestTokenUsage = (info: Record<string, unknown> | null): void => {
+        this.latestTokenUsage = info;
+    };
+
+    getLatestTokenUsage = (): Record<string, unknown> | null => {
+        return this.latestTokenUsage;
+    };
+
+    setCurrentTurnId = (turnId: string | null): void => {
+        this.currentTurnId = turnId;
+    };
+
+    getCurrentTurnId = (): string | null => {
+        return this.currentTurnId;
     };
 
     sendAgentMessage = (message: unknown): void => {

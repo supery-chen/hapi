@@ -43,6 +43,8 @@ describe('listSlashCommands', () => {
         expect(command).toBeDefined()
         expect(command?.source).toBe('user')
         expect(command?.description).toBe('Global only')
+        expect(command?.kind).toBe('prompt-template')
+        expect(command?.webSupported).toBe(true)
     })
 
     it('loads project-level commands when projectDir is provided', async () => {
@@ -76,6 +78,7 @@ describe('listSlashCommands', () => {
         expect(sharedCommands[0]?.source).toBe('project')
         expect(sharedCommands[0]?.description).toBe('Project shared')
         expect(sharedCommands[0]?.content).toBe('Project body')
+        expect(sharedCommands[0]?.argPolicy).toBe('none')
     })
 
     it('loads nested project commands using colon-separated names', async () => {
