@@ -1,5 +1,6 @@
 import chalk from 'chalk'
 import type { CommandDefinition, CommandContext } from './types'
+import { ensureRunnerStartedForMachineExposure, getLocalHubApiUrl } from '@/utils/machineExposure'
 
 function parseHubArgs(args: string[]): { host?: string; port?: string } {
     const result: { host?: string; port?: string } = {}
@@ -28,11 +29,18 @@ export const hubCommand: CommandDefinition = {
             const { host, port } = parseHubArgs(context.commandArgs)
 
             if (host) {
-                process.env.WEBAPP_HOST = host
+                process.env.HAPI_LISTEN_HOST = host
             }
             if (port) {
-                process.env.WEBAPP_PORT = port
+                process.env.HAPI_LISTEN_PORT = port
             }
+
+            const { createConfiguration } = await import('../../../hub/src/configuration')
+            const hubConfig = await createConfiguration()
+            await ensureRunnerStartedForMachineExposure(
+                getLocalHubApiUrl(hubConfig.listenHost, hubConfig.listenPort)
+            )
+
             await import('../../../hub/src/index')
         } catch (error) {
             console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error')

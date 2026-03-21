@@ -15,6 +15,7 @@ interface Settings {
   // All machine operations use this ID
   machineId?: string
   machineIdConfirmedByServer?: boolean
+  exposeMachine?: boolean
   runnerAutoStartWhenRunningHappy?: boolean
   cliApiToken?: string
   // API URL for server connections (priority: env HAPI_API_URL > this > default)

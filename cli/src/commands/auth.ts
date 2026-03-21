@@ -5,6 +5,7 @@ import { stdin as input, stdout as output } from 'node:process'
 import { configuration } from '@/configuration'
 import { readSettings, clearMachineId, updateSettings } from '@/persistence'
 import { initializeApiUrl } from '@/ui/apiUrlInit'
+import { getExposeMachinePreference } from '@/utils/machineExposure'
 import type { CommandDefinition } from './types'
 
 export async function handleAuthCommand(args: string[]): Promise<void> {
@@ -18,6 +19,7 @@ export async function handleAuthCommand(args: string[]): Promise<void> {
     if (subcommand === 'status') {
         await initializeApiUrl()
         const settings = await readSettings()
+        const exposeMachine = await getExposeMachinePreference()
         const envToken = process.env.CLI_API_TOKEN
         const settingsToken = settings.cliApiToken
         const hasToken = Boolean(envToken || settingsToken)
@@ -27,6 +29,7 @@ export async function handleAuthCommand(args: string[]): Promise<void> {
         console.log(chalk.gray(`  CLI_API_TOKEN: ${hasToken ? 'set' : 'missing'}`))
         console.log(chalk.gray(`  Token Source: ${tokenSource}`))
         console.log(chalk.gray(`  Machine ID: ${settings.machineId ?? 'not set'}`))
+        console.log(chalk.gray(`  Expose as machine: ${exposeMachine.value ? 'enabled' : 'disabled'} (${exposeMachine.source})`))
         console.log(chalk.gray(`  Host: ${os.hostname()}`))
 
         if (!hasToken) {
@@ -39,6 +42,45 @@ export async function handleAuthCommand(args: string[]): Promise<void> {
             console.log(chalk.gray('  Then run: hapi auth login'))
         }
         return
+    }
+
+    if (subcommand === 'machine') {
+        const machineSubcommand = args[1] ?? 'status'
+
+        if (machineSubcommand === 'status') {
+            const exposeMachine = await getExposeMachinePreference()
+            console.log(chalk.bold('\nMachine Exposure\n'))
+            console.log(chalk.gray(`  Expose as machine when running \`hapi hub\`: ${exposeMachine.value ? 'enabled' : 'disabled'}`))
+            console.log(chalk.gray(`  Source: ${exposeMachine.source}`))
+            if (exposeMachine.source === 'environment') {
+                console.log(chalk.yellow('  HAPI_EXPOSE_MACHINE environment variable overrides local settings.'))
+            }
+            return
+        }
+
+        if (machineSubcommand === 'on' || machineSubcommand === 'enable') {
+            await updateSettings((current) => ({
+                ...current,
+                exposeMachine: true
+            }))
+            console.log(chalk.green('Enabled local machine exposure for `hapi hub`.'))
+            console.log(chalk.gray('Start `hapi hub` to ensure this machine is available in the web app.'))
+            return
+        }
+
+        if (machineSubcommand === 'off' || machineSubcommand === 'disable') {
+            await updateSettings((current) => ({
+                ...current,
+                exposeMachine: false
+            }))
+            console.log(chalk.green('Disabled local machine exposure for `hapi hub`.'))
+            console.log(chalk.gray('Existing runner processes are not stopped automatically.'))
+            return
+        }
+
+        console.error(chalk.red(`Unknown machine subcommand: ${machineSubcommand}`))
+        showHelp()
+        process.exit(1)
     }
 
     if (subcommand === 'login') {
@@ -94,6 +136,9 @@ ${chalk.bold('Usage:')}
   hapi auth status            Show current configuration
   hapi auth login             Enter and save CLI_API_TOKEN
   hapi auth logout            Clear saved credentials
+  hapi auth machine status    Show whether \`hapi hub\` exposes this machine
+  hapi auth machine on        Auto-expose this machine when running \`hapi hub\`
+  hapi auth machine off       Do not auto-expose this machine when running \`hapi hub\`
 
 ${chalk.bold('Token priority (highest to lowest):')}
   1. CLI_API_TOKEN environment variable
