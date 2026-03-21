@@ -41,6 +41,8 @@ export default {
   // Sessions page
   'sessions.count': '{n} 个会话，{m} 个项目',
   'sessions.new': '新建会话',
+  'sessions.sidebar.collapse': '收起会话列表',
+  'sessions.sidebar.expand': '展开会话列表',
 
   // Session list
   'session.item.path': '路径',

@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
     Navigate,
@@ -34,6 +34,31 @@ import FilesPage from '@/routes/sessions/files'
 import FilePage from '@/routes/sessions/file'
 import TerminalPage from '@/routes/sessions/terminal'
 import SettingsPage from '@/routes/settings'
+
+const SESSIONS_SIDEBAR_COLLAPSED_KEY = 'hapi:sessions-sidebar-collapsed'
+
+function readSessionsSidebarCollapsed(): boolean {
+    if (typeof window === 'undefined') {
+        return false
+    }
+
+    try {
+        return window.localStorage.getItem(SESSIONS_SIDEBAR_COLLAPSED_KEY) === 'true'
+    } catch {
+        return false
+    }
+}
+
+function writeSessionsSidebarCollapsed(collapsed: boolean): void {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    try {
+        window.localStorage.setItem(SESSIONS_SIDEBAR_COLLAPSED_KEY, collapsed ? 'true' : 'false')
+    } catch {
+    }
+}
 
 function BackIcon(props: { className?: string }) {
     return (
@@ -94,6 +119,31 @@ function SettingsIcon(props: { className?: string }) {
     )
 }
 
+function SidebarToggleIcon(props: { className?: string; collapsed: boolean }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={props.className}
+        >
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M9 4v16" />
+            {props.collapsed ? (
+                <polyline points="15 9 12 12 15 15" />
+            ) : (
+                <polyline points="13 9 16 12 13 15" />
+            )}
+        </svg>
+    )
+}
+
 function SessionsPage() {
     const { api } = useAppContext()
     const navigate = useNavigate()
@@ -105,21 +155,44 @@ function SessionsPage() {
     const handleRefresh = useCallback(() => {
         void refetch()
     }, [refetch])
+    const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState<boolean>(() => readSessionsSidebarCollapsed())
 
     const projectCount = new Set(sessions.map(s => s.metadata?.worktree?.basePath ?? s.metadata?.path ?? 'Other')).size
     const sessionMatch = matchRoute({ to: '/sessions/$sessionId', fuzzy: true })
     const selectedSessionId = sessionMatch && sessionMatch.sessionId !== 'new' ? sessionMatch.sessionId : null
     const isSessionsIndex = pathname === '/sessions' || pathname === '/sessions/'
 
+    useEffect(() => {
+        writeSessionsSidebarCollapsed(desktopSidebarCollapsed)
+    }, [desktopSidebarCollapsed])
+
+    const toggleDesktopSidebar = useCallback(() => {
+        setDesktopSidebarCollapsed((collapsed) => !collapsed)
+    }, [])
+
     return (
         <div className="flex h-full min-h-0">
             <div
-                className={`${isSessionsIndex ? 'flex' : 'hidden lg:flex'} w-full lg:w-[420px] xl:w-[480px] shrink-0 flex-col bg-[var(--app-bg)] lg:border-r lg:border-[var(--app-divider)]`}
+                className={`
+                    ${isSessionsIndex ? 'flex' : 'hidden'}
+                    ${desktopSidebarCollapsed ? 'lg:hidden' : 'lg:flex'}
+                    w-full lg:w-[420px] xl:w-[480px] shrink-0 flex-col bg-[var(--app-bg)] lg:border-r lg:border-[var(--app-divider)]
+                `}
             >
                 <div className="bg-[var(--app-bg)] pt-[env(safe-area-inset-top)]">
                     <div className="mx-auto w-full max-w-content flex items-center justify-between px-3 py-2">
-                        <div className="text-xs text-[var(--app-hint)]">
-                            {t('sessions.count', { n: sessions.length, m: projectCount })}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <button
+                                type="button"
+                                onClick={toggleDesktopSidebar}
+                                className="hidden lg:flex p-1.5 rounded-full text-[var(--app-hint)] hover:text-[var(--app-fg)] hover:bg-[var(--app-subtle-bg)] transition-colors"
+                                title={t('sessions.sidebar.collapse')}
+                            >
+                                <SidebarToggleIcon collapsed={false} className="h-5 w-5" />
+                            </button>
+                            <div className="text-xs text-[var(--app-hint)] min-w-0">
+                                {t('sessions.count', { n: sessions.length, m: projectCount })}
+                            </div>
                         </div>
                         <div className="flex items-center gap-2">
                             <button
@@ -164,7 +237,17 @@ function SessionsPage() {
                 </div>
             </div>
 
-            <div className={`${isSessionsIndex ? 'hidden lg:flex' : 'flex'} min-w-0 flex-1 flex-col bg-[var(--app-bg)]`}>
+            <div className={`${isSessionsIndex ? 'hidden lg:flex' : 'flex'} min-w-0 flex-1 flex-col bg-[var(--app-bg)] relative`}>
+                {desktopSidebarCollapsed ? (
+                    <button
+                        type="button"
+                        onClick={toggleDesktopSidebar}
+                        className="hidden lg:flex absolute left-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-20 p-1.5 rounded-full text-[var(--app-hint)] hover:text-[var(--app-fg)] hover:bg-[var(--app-subtle-bg)] transition-colors"
+                        title={t('sessions.sidebar.expand')}
+                    >
+                        <SidebarToggleIcon collapsed className="h-5 w-5" />
+                    </button>
+                ) : null}
                 <div className="flex-1 min-h-0">
                     <Outlet />
                 </div>
