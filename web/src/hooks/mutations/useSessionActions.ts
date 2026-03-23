@@ -9,12 +9,10 @@ import { isKnownFlavor } from '@/lib/agentFlavorUtils'
 export function useSessionActions(
     api: ApiClient | null,
     sessionId: string | null,
-    agentFlavor?: string | null,
-    codexCollaborationModeSupported?: boolean
+    agentFlavor?: string | null
 ): {
     abortSession: () => Promise<void>
     archiveSession: () => Promise<void>
-    switchSession: () => Promise<void>
     setPermissionMode: (mode: PermissionMode) => Promise<void>
     setCollaborationMode: (mode: CodexCollaborationMode) => Promise<void>
     renameSession: (name: string) => Promise<void>
@@ -49,16 +47,6 @@ export function useSessionActions(
         onSuccess: () => void invalidateSession(),
     })
 
-    const switchMutation = useMutation({
-        mutationFn: async () => {
-            if (!api || !sessionId) {
-                throw new Error('Session unavailable')
-            }
-            await api.switchSession(sessionId)
-        },
-        onSuccess: () => void invalidateSession(),
-    })
-
     const permissionMutation = useMutation({
         mutationFn: async (mode: PermissionMode) => {
             if (!api || !sessionId) {
@@ -79,9 +67,6 @@ export function useSessionActions(
             }
             if (agentFlavor !== 'codex') {
                 throw new Error('Collaboration mode is only supported for Codex sessions')
-            }
-            if (!codexCollaborationModeSupported) {
-                throw new Error('Collaboration mode is only supported for remote Codex sessions')
             }
             await api.setCollaborationMode(sessionId, mode)
         },
@@ -116,14 +101,12 @@ export function useSessionActions(
     return {
         abortSession: abortMutation.mutateAsync,
         archiveSession: archiveMutation.mutateAsync,
-        switchSession: switchMutation.mutateAsync,
         setPermissionMode: permissionMutation.mutateAsync,
         setCollaborationMode: collaborationMutation.mutateAsync,
         renameSession: renameMutation.mutateAsync,
         deleteSession: deleteMutation.mutateAsync,
         isPending: abortMutation.isPending
             || archiveMutation.isPending
-            || switchMutation.isPending
             || permissionMutation.isPending
             || collaborationMutation.isPending
             || renameMutation.isPending

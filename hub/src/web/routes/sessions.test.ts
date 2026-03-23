@@ -21,7 +21,6 @@ function createSession(overrides?: Partial<Session>): Session {
         metadata: baseMetadata,
         metadataVersion: 1,
         agentState: {
-            controlledByUser: false,
             requests: {},
             completedRequests: {}
         },
@@ -69,27 +68,14 @@ function createApp(session: Session) {
 }
 
 describe('sessions routes', () => {
-    it('rejects collaboration mode changes for local Codex sessions', async () => {
-        const session = createSession({
-            agentState: {
-                controlledByUser: true,
-                requests: {},
-                completedRequests: {}
-            }
-        })
-        const { app, applySessionConfigCalls } = createApp(session)
+    it('does not expose the legacy switch route', async () => {
+        const { app } = createApp(createSession())
 
-        const response = await app.request('/api/sessions/session-1/collaboration-mode', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ mode: 'plan' })
+        const response = await app.request('/api/sessions/session-1/switch', {
+            method: 'POST'
         })
 
-        expect(response.status).toBe(409)
-        expect(await response.json()).toEqual({
-            error: 'Collaboration mode can only be changed for remote Codex sessions'
-        })
-        expect(applySessionConfigCalls).toEqual([])
+        expect(response.status).toBe(404)
     })
 
     it('rejects collaboration mode changes when session metadata is missing', async () => {

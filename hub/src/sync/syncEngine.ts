@@ -191,7 +191,6 @@ export class SyncEngine {
         sid: string
         time: number
         thinking?: boolean
-        mode?: 'local' | 'remote'
         permissionMode?: PermissionMode
         model?: string | null
         collaborationMode?: CodexCollaborationMode
@@ -322,10 +321,6 @@ export class SyncEngine {
     async archiveSession(sessionId: string): Promise<void> {
         await this.rpcGateway.killSession(sessionId)
         this.handleSessionEnd({ sid: sessionId, time: Date.now() })
-    }
-
-    async switchSession(sessionId: string, to: 'remote' | 'local'): Promise<void> {
-        await this.rpcGateway.switchSession(sessionId, to)
     }
 
     async renameSession(sessionId: string, name: string): Promise<void> {

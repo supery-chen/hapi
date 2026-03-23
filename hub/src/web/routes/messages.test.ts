@@ -20,7 +20,6 @@ function createSession() {
         },
         metadataVersion: 1,
         agentState: {
-            controlledByUser: false,
             requests: {},
             completedRequests: {}
         },

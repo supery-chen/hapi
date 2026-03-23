@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Text, useStdout } from 'ink'
+import { Box, Text, useInput, useStdout } from 'ink'
 import { MessageBuffer, type BufferedMessage } from './messageBuffer'
-import { useSwitchControls } from './useSwitchControls'
 
 interface CodexDisplayProps {
     messageBuffer: MessageBuffer
     logPath?: string
     onExit?: () => void
-    onSwitchToLocal?: () => void
 }
 
-export const CodexDisplay: React.FC<CodexDisplayProps> = ({ messageBuffer, logPath, onExit, onSwitchToLocal }) => {
+export const CodexDisplay: React.FC<CodexDisplayProps> = ({ messageBuffer, logPath, onExit }) => {
     const [messages, setMessages] = useState<BufferedMessage[]>([])
-    const { confirmationMode, actionInProgress } = useSwitchControls({
-        onExit,
-        onSwitch: onSwitchToLocal
-    })
     const { stdout } = useStdout()
     const terminalWidth = stdout.columns || 80
     const terminalHeight = stdout.rows || 24
+
+    useInput((input, key) => {
+        if (key.ctrl && input === 'c') {
+            void onExit?.()
+        }
+    })
 
     useEffect(() => {
         setMessages(messageBuffer.getMessages())
@@ -95,9 +95,6 @@ export const CodexDisplay: React.FC<CodexDisplayProps> = ({ messageBuffer, logPa
                 width={terminalWidth}
                 borderStyle="round"
                 borderColor={
-                    actionInProgress ? "gray" :
-                    confirmationMode === 'exit' ? "red" :
-                    confirmationMode === 'switch' ? "yellow" :
                     "green"
                 }
                 paddingX={2}
@@ -106,29 +103,9 @@ export const CodexDisplay: React.FC<CodexDisplayProps> = ({ messageBuffer, logPa
                 flexDirection="column"
             >
                 <Box flexDirection="column" alignItems="center">
-                    {actionInProgress === 'exiting' ? (
-                        <Text color="gray" bold>
-                            Exiting agent...
-                        </Text>
-                    ) : actionInProgress === 'switching' ? (
-                        <Text color="gray" bold>
-                            Switching to local mode...
-                        </Text>
-                    ) : confirmationMode === 'exit' ? (
-                        <Text color="red" bold>
-                            ⚠️  Press Ctrl-C again to exit the agent
-                        </Text>
-                    ) : confirmationMode === 'switch' ? (
-                        <Text color="yellow" bold>
-                            ⏸️  Press space again to switch to local mode
-                        </Text>
-                    ) : (
-                        <>
-                            <Text color="green" bold>
-                                🤖 Codex Agent Running {onSwitchToLocal ? '• Press space to switch to local mode • Ctrl-C to exit' : '• Ctrl-C to exit'}
-                            </Text>
-                        </>
-                    )}
+                    <Text color="green" bold>
+                        🤖 Codex Agent Running • Ctrl-C to exit
+                    </Text>
                     {process.env.DEBUG && logPath && (
                         <Text color="gray" dimColor>
                             Debug logs: {logPath}

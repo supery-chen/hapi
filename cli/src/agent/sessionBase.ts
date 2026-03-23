@@ -10,8 +10,6 @@ export type AgentSessionBaseOptions<Mode> = {
     logPath: string;
     sessionId: string | null;
     messageQueue: MessageQueue2<Mode>;
-    onModeChange: (mode: 'local' | 'remote') => void;
-    mode?: 'local' | 'remote';
     sessionLabel: string;
     sessionIdLabel: string;
     applySessionIdToMetadata: (metadata: Metadata, sessionId: string) => Metadata;
@@ -26,10 +24,9 @@ export class AgentSessionBase<Mode> {
     readonly api: ApiClient;
     readonly client: ApiSessionClient;
     readonly queue: MessageQueue2<Mode>;
-    protected readonly _onModeChange: (mode: 'local' | 'remote') => void;
 
     sessionId: string | null;
-    mode: 'local' | 'remote' = 'local';
+    mode: 'remote' = 'remote';
     thinking: boolean = false;
 
     private sessionFoundCallbacks: ((sessionId: string) => void)[] = [];
@@ -48,38 +45,23 @@ export class AgentSessionBase<Mode> {
         this.logPath = opts.logPath;
         this.sessionId = opts.sessionId;
         this.queue = opts.messageQueue;
-        this._onModeChange = opts.onModeChange;
         this.applySessionIdToMetadata = opts.applySessionIdToMetadata;
         this.sessionLabel = opts.sessionLabel;
         this.sessionIdLabel = opts.sessionIdLabel;
-        this.mode = opts.mode ?? 'local';
         this.permissionMode = opts.permissionMode;
         this.model = opts.model;
         this.collaborationMode = opts.collaborationMode;
 
-        this.client.keepAlive(this.thinking, this.mode, this.getKeepAliveRuntime());
+        this.client.keepAlive(this.thinking, this.getKeepAliveRuntime());
         this.keepAliveInterval = setInterval(() => {
-            this.client.keepAlive(this.thinking, this.mode, this.getKeepAliveRuntime());
+            this.client.keepAlive(this.thinking, this.getKeepAliveRuntime());
         }, 2000);
 
     }
 
     onThinkingChange = (thinking: boolean) => {
         this.thinking = thinking;
-        this.client.keepAlive(thinking, this.mode, this.getKeepAliveRuntime());
-    };
-
-    onModeChange = (mode: 'local' | 'remote') => {
-        this.mode = mode;
-        this.client.keepAlive(this.thinking, mode, this.getKeepAliveRuntime());
-        const permissionLabel = this.permissionMode ?? 'unset';
-        const modelLabel = this.model === undefined ? 'unset' : (this.model ?? 'auto');
-        const collaborationLabel = this.collaborationMode ?? 'unset';
-        logger.debug(
-            `[${this.sessionLabel}] Mode switched to ${mode} ` +
-            `(permissionMode=${permissionLabel}, model=${modelLabel}, collaborationMode=${collaborationLabel})`
-        );
-        this._onModeChange(mode);
+        this.client.keepAlive(thinking, this.getKeepAliveRuntime());
     };
 
     onSessionFound = (sessionId: string) => {

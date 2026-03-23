@@ -3,20 +3,12 @@ import { MessageQueue2 } from '@/utils/MessageQueue2';
 import { AgentSessionBase } from '@/agent/sessionBase';
 import type { EnhancedMode, PermissionMode } from './loop';
 import type { CodexCliOverrides } from './utils/codexCliOverrides';
-import type { LocalLaunchExitReason } from '@/agent/localLaunchPolicy';
 import type { SessionModel } from '@/api/types';
-
-type LocalLaunchFailure = {
-    message: string;
-    exitReason: LocalLaunchExitReason;
-};
 
 export class CodexSession extends AgentSessionBase<EnhancedMode> {
     readonly codexArgs?: string[];
     readonly codexCliOverrides?: CodexCliOverrides;
     readonly startedBy: 'runner' | 'terminal';
-    readonly startingMode: 'local' | 'remote';
-    localLaunchFailure: LocalLaunchFailure | null = null;
     private latestTokenUsage: Record<string, unknown> | null = null;
     private currentTurnId: string | null = null;
 
@@ -27,10 +19,7 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
         logPath: string;
         sessionId: string | null;
         messageQueue: MessageQueue2<EnhancedMode>;
-        onModeChange: (mode: 'local' | 'remote') => void;
-        mode?: 'local' | 'remote';
         startedBy: 'runner' | 'terminal';
-        startingMode: 'local' | 'remote';
         codexArgs?: string[];
         codexCliOverrides?: CodexCliOverrides;
         permissionMode?: PermissionMode;
@@ -44,8 +33,6 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
             logPath: opts.logPath,
             sessionId: opts.sessionId,
             messageQueue: opts.messageQueue,
-            onModeChange: opts.onModeChange,
-            mode: opts.mode,
             sessionLabel: 'CodexSession',
             sessionIdLabel: 'Codex',
             applySessionIdToMetadata: (metadata, sessionId) => ({
@@ -60,7 +47,6 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
         this.codexArgs = opts.codexArgs;
         this.codexCliOverrides = opts.codexCliOverrides;
         this.startedBy = opts.startedBy;
-        this.startingMode = opts.startingMode;
         this.permissionMode = opts.permissionMode;
         this.model = opts.model;
         this.collaborationMode = opts.collaborationMode;
@@ -76,10 +62,6 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
 
     setCollaborationMode = (mode: EnhancedMode['collaborationMode']): void => {
         this.collaborationMode = mode;
-    };
-
-    recordLocalLaunchFailure = (message: string, exitReason: LocalLaunchExitReason): void => {
-        this.localLaunchFailure = { message, exitReason };
     };
 
     setLatestTokenUsage = (info: Record<string, unknown> | null): void => {

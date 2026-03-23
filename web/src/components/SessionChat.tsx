@@ -44,13 +44,11 @@ export function SessionChat(props: {
     const blocksByIdRef = useRef<Map<string, ChatBlock>>(new Map())
     const [forceScrollToken, setForceScrollToken] = useState(0)
     const agentFlavor = props.session.metadata?.flavor ?? null
-    const controlledByUser = props.session.agentState?.controlledByUser === true
-    const codexCollaborationModeSupported = agentFlavor === 'codex' && !controlledByUser
-    const { abortSession, switchSession, setPermissionMode, setCollaborationMode } = useSessionActions(
+    const codexCollaborationModeSupported = agentFlavor === 'codex'
+    const { abortSession, setPermissionMode, setCollaborationMode } = useSessionActions(
         props.api,
         props.session.id,
-        agentFlavor,
-        codexCollaborationModeSupported
+        agentFlavor
     )
 
     // Track session id to clear caches when it changes
@@ -132,12 +130,6 @@ export function SessionChat(props: {
         await abortSession()
         props.onRefresh()
     }, [abortSession, props.onRefresh])
-
-    // Switch to remote handler
-    const handleSwitchToRemote = useCallback(async () => {
-        await switchSession()
-        props.onRefresh()
-    }, [switchSession, props.onRefresh])
 
     const handleViewFiles = useCallback(() => {
         navigate({
@@ -232,14 +224,12 @@ export function SessionChat(props: {
                         thinking={props.session.thinking}
                         agentState={props.session.agentState}
                         contextSize={reduced.latestUsage?.contextSize}
-                        controlledByUser={controlledByUser}
                         onCollaborationModeChange={
-                            codexCollaborationModeSupported && props.session.active && !controlledByUser
+                            codexCollaborationModeSupported && props.session.active
                                 ? handleCollaborationModeChange
                                 : undefined
                         }
                         onPermissionModeChange={handlePermissionModeChange}
-                        onSwitchToRemote={handleSwitchToRemote}
                         onTerminal={props.session.active ? handleViewTerminal : undefined}
                         autocompleteSuggestions={props.autocompleteSuggestions}
                     />

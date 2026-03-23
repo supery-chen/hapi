@@ -34,10 +34,6 @@ export function getEventPresentation(event: AgentEvent): EventPresentation {
         }
         return { icon: '⚠️', text: 'API error' }
     }
-    if (event.type === 'switch') {
-        const mode = event.mode === 'local' ? 'local' : 'remote'
-        return { icon: '🔄', text: `Switched to ${mode}` }
-    }
     if (event.type === 'title-changed') {
         const title = typeof event.title === 'string' ? event.title : ''
         return { icon: null, text: title ? `Title changed to "${title}"` : 'Title changed' }

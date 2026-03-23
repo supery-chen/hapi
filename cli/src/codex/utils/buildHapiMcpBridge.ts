@@ -1,5 +1,5 @@
 /**
- * Unified MCP bridge setup for Codex local and remote modes.
+ * Unified MCP bridge setup for Codex remote mode.
  *
  * This module provides a single source of truth for starting the hapi MCP
  * bridge server and generating the MCP server configuration that Codex needs.
@@ -40,7 +40,7 @@ export interface HapiMcpBridge {
  * needed to connect Codex to it.
  *
  * This is the single source of truth for MCP bridge setup,
- * used by both local and remote launchers.
+ * used by the remote launcher.
  */
 export async function buildHapiMcpBridge(client: ApiSessionClient): Promise<HapiMcpBridge> {
     const happyServer = await startHapiMcpServer(client);

@@ -8,7 +8,7 @@ import type { AgentState } from '@/api/types';
 import type { CodexSession } from './session';
 import { parseCodexCliOverrides } from './utils/codexCliOverrides';
 import { bootstrapSession } from '@/agent/sessionFactory';
-import { createModeChangeHandler, createRunnerLifecycle, setControlledByUser } from '@/agent/runnerLifecycle';
+import { createRunnerLifecycle } from '@/agent/runnerLifecycle';
 import { isPermissionModeAllowedForFlavor } from '@hapi/protocol';
 import { CodexCollaborationModeSchema, PermissionModeSchema } from '@hapi/protocol/schemas';
 import {
@@ -37,7 +37,7 @@ function formatCodexStatusMarkdown(session: CodexSession): string {
         : 'default';
     const model = session.getModel() ?? 'auto';
     const collaborationMode = session.getCollaborationMode() ?? 'default';
-    const mode = session.mode;
+    const mode = 'remote';
     const threadId = session.sessionId ?? 'unavailable';
     const turnId = session.getCurrentTurnId() ?? 'idle';
     const tokenUsage = session.getLatestTokenUsage();
@@ -89,9 +89,7 @@ export async function runCodex(opts: {
 
     logger.debug(`[codex] Starting with options: startedBy=${startedBy}`);
 
-    let state: AgentState = {
-        controlledByUser: false
-    };
+    const state: AgentState = {};
     const { api, session } = await bootstrapSession({
         flavor: 'codex',
         startedBy,
@@ -99,10 +97,6 @@ export async function runCodex(opts: {
         agentState: state,
         model: opts.model
     });
-
-    const startingMode: 'local' | 'remote' = startedBy === 'runner' ? 'remote' : 'local';
-
-    setControlledByUser(session, startingMode);
 
     const messageQueue = new MessageQueue2<EnhancedMode>((mode) => hashObject({
         permissionMode: mode.permissionMode,
@@ -229,23 +223,6 @@ export async function runCodex(opts: {
         }
 
         const runtimeSession = sessionWrapperRef.current;
-        const currentMode = runtimeSession?.mode ?? startingMode;
-
-        if (command.availability === 'local-only' && currentMode !== 'local') {
-            return {
-                ok: false,
-                code: 'not-available-in-current-mode',
-                message: `/${command.name} is only available in local mode`
-            };
-        }
-
-        if (command.availability === 'remote-only' && currentMode !== 'remote') {
-            return {
-                ok: false,
-                code: 'not-available-in-current-mode',
-                message: `/${command.name} is only available in remote mode`
-            };
-        }
 
         if (command.argPolicy === 'none' && parsedInput.rawTail) {
             return {
@@ -366,7 +343,6 @@ export async function runCodex(opts: {
     try {
         await loop({
             path: workingDirectory,
-            startingMode,
             messageQueue,
             api,
             session,
@@ -377,7 +353,6 @@ export async function runCodex(opts: {
             model: currentModel,
             collaborationMode: currentCollaborationMode,
             resumeSessionId: opts.resumeSessionId,
-            onModeChange: createModeChangeHandler(session),
             onSessionReady: (instance) => {
                 sessionWrapperRef.current = instance;
                 syncSessionMode();
@@ -387,11 +362,6 @@ export async function runCodex(opts: {
         lifecycle.markCrash(error);
         logger.debug('[codex] Loop error:', error);
     } finally {
-        const localFailure = sessionWrapperRef.current?.localLaunchFailure;
-        if (localFailure?.exitReason === 'exit') {
-            lifecycle.setExitCode(1);
-            lifecycle.setArchiveReason(`Local launch failed: ${formatFailureReason(localFailure.message)}`);
-        }
         await lifecycle.cleanupAndExit();
     }
 }

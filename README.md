@@ -6,7 +6,7 @@ Run Codex sessions locally and control them remotely through a Web / PWA / Teleg
 
 ## Features
 
-- **Seamless Handoff** - Work locally, switch to remote when needed, switch back anytime. No context loss, no session restart.
+- **Remote First** - Start and control Codex sessions from the web app or phone without relying on a local terminal handoff.
 - **Native First** - HAPI wraps your AI agent instead of replacing it. Same terminal, same experience, same muscle memory.
 - **AFK Without Stopping** - Step away from your desk? Approve AI requests from your phone with one tap.
 - **Codex Native** - Keep the Codex workflow local while gaining remote control from web and phone.

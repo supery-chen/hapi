@@ -136,7 +136,6 @@ export default {
   'chat.abort': 'Abort',
   'chat.settings': 'Settings',
   'chat.terminal': 'Terminal',
-  'chat.switchRemote': 'Switch to remote mode',
 
   // Terminal
   'terminal.commandName': 'Command',
@@ -204,7 +203,6 @@ export default {
   'composer.settings': 'Settings',
   'composer.terminal': 'Terminal',
   'composer.abort': 'Abort',
-  'composer.switchRemote': 'Switch to remote mode',
   'composer.attach': 'Attach file',
   'composer.send': 'Send',
   'composer.stop': 'Stop',

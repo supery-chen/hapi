@@ -76,7 +76,6 @@ export const AgentStateCompletedRequestSchema = z.object({
 export type AgentStateCompletedRequest = z.infer<typeof AgentStateCompletedRequestSchema>
 
 export const AgentStateSchema = z.object({
-    controlledByUser: z.boolean().nullish(),
     requests: z.record(z.string(), AgentStateRequestSchema).nullish(),
     completedRequests: z.record(z.string(), AgentStateCompletedRequestSchema).nullish()
 })

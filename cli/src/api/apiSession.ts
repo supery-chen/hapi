@@ -377,9 +377,6 @@ export class ApiSessionClient extends EventEmitter {
     }
 
     sendSessionEvent(event: {
-        type: 'switch'
-        mode: 'local' | 'remote'
-    } | {
         type: 'message'
         message: string
     } | {
@@ -405,7 +402,6 @@ export class ApiSessionClient extends EventEmitter {
 
     keepAlive(
         thinking: boolean,
-        mode: 'local' | 'remote',
         runtime?: {
             permissionMode?: SessionPermissionMode
             model?: SessionModel
@@ -416,7 +412,6 @@ export class ApiSessionClient extends EventEmitter {
             sid: this.sessionId,
             time: Date.now(),
             thinking,
-            mode,
             ...(runtime ?? {})
         })
     }

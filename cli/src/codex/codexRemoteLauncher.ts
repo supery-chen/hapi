@@ -81,19 +81,6 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
         await this.handleAbort();
     }
 
-    private async handleSwitchFromUi(): Promise<void> {
-        logger.debug('[codex-remote]: Switching to local mode via double space');
-        this.exitReason = 'switch';
-        this.shouldExit = true;
-        await this.handleAbort();
-    }
-
-    private async handleSwitchRequest(): Promise<void> {
-        this.exitReason = 'switch';
-        this.shouldExit = true;
-        await this.handleAbort();
-    }
-
     public async launch(): Promise<RemoteLauncherExitReason> {
         if (this.session.codexArgs && this.session.codexArgs.length > 0) {
             if (hasCodexCliOverrides(this.session.codexCliOverrides)) {
@@ -106,8 +93,7 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
         }
 
         return this.start({
-            onExit: () => this.handleExitFromUi(),
-            onSwitchToLocal: () => this.handleSwitchFromUi()
+            onExit: () => this.handleExitFromUi()
         });
     }
 
@@ -510,8 +496,7 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
         this.happyServer = happyServer;
 
         this.setupAbortHandlers(session.client.rpcHandlerManager, {
-            onAbort: () => this.handleAbort(),
-            onSwitch: () => this.handleSwitchRequest()
+            onAbort: () => this.handleAbort()
         });
 
         function logActiveHandles(tag: string) {

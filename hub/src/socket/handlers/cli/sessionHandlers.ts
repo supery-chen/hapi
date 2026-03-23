@@ -13,7 +13,6 @@ type SessionAlivePayload = {
     sid: string
     time: number
     thinking?: boolean
-    mode?: 'local' | 'remote'
     permissionMode?: PermissionMode
     model?: string | null
     collaborationMode?: CodexCollaborationMode

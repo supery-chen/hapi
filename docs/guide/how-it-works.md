@@ -169,50 +169,14 @@ For remote access outside your local network:
 - **Tailscale** - Mesh VPN for private networks
 - **ngrok** - Quick setup for testing
 
-## Seamless Handoff
+## Remote Control
 
-HAPI's defining feature is the ability to seamlessly hand off control between local terminal and remote devices without losing session state.
-
-### Local Mode
-
-When working in local mode, you have the full terminal experience — it is native Claude Code, Codex, or OpenCode:
-
-- Direct keyboard input with instant response
-- Full terminal UI with syntax highlighting
-- Best for focused, uninterrupted coding sessions
-- All AI processing happens locally on your machine
-
-### Remote Mode
-
-Switch to remote mode when you need to step away:
+HAPI's defining feature is that Codex sessions keep running on your machine while the web app and phone stay in control.
 
 - Control via Web/PWA/Telegram from any device
 - Approve permissions on the go
 - Monitor progress while away from your desk
 - Session continues running on your local machine
-
-### How Switching Works
-
-```
-┌─────────────────┐                    ┌─────────────────┐
-│   Local Mode    │◄──────────────────►│   Remote Mode   │
-│   (Terminal)    │                    │   (Phone/Web)   │
-└─────────────────┘                    └─────────────────┘
-        │                                      │
-        │  ┌────────────────────────────┐      │
-        └─►│  Same Session, Same State  │◄─────┘
-           └────────────────────────────┘
-```
-
-**Local → Remote:**
-- Receive a message from phone/web
-- Session automatically switches to remote mode
-- Terminal shows "Remote mode - waiting for input"
-
-**Remote → Local:**
-- Press double-space in terminal
-- Instantly regain local control
-- Continue typing as if you never left
 
 ### Use Cases
 

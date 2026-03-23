@@ -138,7 +138,6 @@ export default {
   'chat.abort': '中止',
   'chat.settings': '设置',
   'chat.terminal': '终端',
-  'chat.switchRemote': '切换到远程模式',
 
   // Terminal
   'terminal.commandName': '命令',
@@ -206,7 +205,6 @@ export default {
   'composer.settings': '设置',
   'composer.terminal': '终端',
   'composer.abort': '中止',
-  'composer.switchRemote': '切换到远程模式',
   'composer.attach': '添加文件',
   'composer.send': '发送',
   'composer.stop': '停止',

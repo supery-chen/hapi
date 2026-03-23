@@ -207,21 +207,6 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
         return c.json({ ok: true })
     })
 
-    app.post('/sessions/:id/switch', async (c) => {
-        const engine = requireSyncEngine(c, getSyncEngine)
-        if (engine instanceof Response) {
-            return engine
-        }
-
-        const sessionResult = requireSessionFromParam(c, engine, { requireActive: true })
-        if (sessionResult instanceof Response) {
-            return sessionResult
-        }
-
-        await engine.switchSession(sessionResult.sessionId, 'remote')
-        return c.json({ ok: true })
-    })
-
     app.post('/sessions/:id/permission-mode', async (c) => {
         const engine = requireSyncEngine(c, getSyncEngine)
         if (engine instanceof Response) {
@@ -274,10 +259,6 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
         if (sessionResult.session.metadata?.flavor !== 'codex') {
             return c.json({ error: 'Collaboration mode is only supported for Codex sessions' }, 400)
         }
-        if (sessionResult.session.agentState?.controlledByUser === true) {
-            return c.json({ error: 'Collaboration mode can only be changed for remote Codex sessions' }, 409)
-        }
-
         const body = await c.req.json().catch(() => null)
         const parsed = collaborationModeSchema.safeParse(body)
         if (!parsed.success) {

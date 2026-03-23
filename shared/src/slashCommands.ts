@@ -6,7 +6,7 @@ export type SlashCommandSource = typeof SLASH_COMMAND_SOURCES[number]
 export const SLASH_COMMAND_KINDS = ['action', 'prompt-template'] as const
 export type SlashCommandKind = typeof SLASH_COMMAND_KINDS[number]
 
-export const SLASH_COMMAND_AVAILABILITY = ['both', 'local-only', 'remote-only'] as const
+export const SLASH_COMMAND_AVAILABILITY = ['both', 'remote-only'] as const
 export type SlashCommandAvailability = typeof SLASH_COMMAND_AVAILABILITY[number]
 
 export const SLASH_COMMAND_ARG_POLICIES = ['none', 'raw-tail'] as const

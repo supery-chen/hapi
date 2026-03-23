@@ -1,5 +1,5 @@
 /**
- * Codex-specific system prompt for local mode.
+ * Codex-specific system prompt for HAPI-managed Codex sessions.
  *
  * This prompt instructs Codex to call the hapi__change_title function
  * to set appropriate chat session titles.
@@ -20,6 +20,6 @@ export const TITLE_INSTRUCTION = trimIdent(`
 `);
 
 /**
- * The system prompt to inject via developer_instructions in local mode.
+ * The system prompt to inject via developer_instructions.
  */
 export const codexSystemPrompt = TITLE_INSTRUCTION;

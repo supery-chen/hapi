@@ -9,17 +9,14 @@ export type RemoteLauncherDisplayContext = {
     messageBuffer: MessageBuffer;
     logPath?: string;
     onExit: () => void | Promise<void>;
-    onSwitchToLocal: () => void | Promise<void>;
 };
 
 export type RemoteLauncherTerminalHandlers = {
     onExit: () => void | Promise<void>;
-    onSwitchToLocal: () => void | Promise<void>;
 };
 
 export type RemoteLauncherAbortHandlers = {
     onAbort: () => void | Promise<void>;
-    onSwitch: () => void | Promise<void>;
 };
 
 type RpcHandlerManagerLike = {
@@ -55,8 +52,7 @@ export abstract class RemoteLauncherBase {
             this.inkInstance = render(this.createDisplay({
                 messageBuffer: this.messageBuffer,
                 logPath: this.logPath,
-                onExit: handlers.onExit,
-                onSwitchToLocal: handlers.onSwitchToLocal
+                onExit: handlers.onExit
             }), {
                 exitOnCtrlC: false,
                 patchConsole: false
@@ -79,15 +75,10 @@ export abstract class RemoteLauncherBase {
         rpcHandlerManager.registerHandler('abort', async () => {
             await handlers.onAbort();
         });
-
-        rpcHandlerManager.registerHandler('switch', async () => {
-            await handlers.onSwitch();
-        });
     }
 
     protected clearAbortHandlers(rpcHandlerManager: RpcHandlerManagerLike): void {
         rpcHandlerManager.registerHandler('abort', async () => {});
-        rpcHandlerManager.registerHandler('switch', async () => {});
     }
 
     protected async requestExit(

@@ -125,17 +125,3 @@ export function createRunnerLifecycle(options: RunnerLifecycleOptions): RunnerLi
         registerProcessHandlers
     }
 }
-
-export function setControlledByUser(session: ApiSessionClient, mode: 'local' | 'remote'): void {
-    session.updateAgentState((currentState) => ({
-        ...currentState,
-        controlledByUser: mode === 'local'
-    }))
-}
-
-export function createModeChangeHandler(session: ApiSessionClient): (mode: 'local' | 'remote') => void {
-    return (mode) => {
-        session.sendSessionEvent({ type: 'switch', mode })
-        setControlledByUser(session, mode)
-    }
-}

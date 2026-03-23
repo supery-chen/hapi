@@ -76,7 +76,6 @@ See `src/web/routes/` for all endpoints.
 - `GET /api/sessions` - List all sessions.
 - `GET /api/sessions/:id` - Get session details.
 - `POST /api/sessions/:id/abort` - Abort session.
-- `POST /api/sessions/:id/switch` - Switch session to remote mode.
 - `POST /api/sessions/:id/resume` - Resume inactive session.
 - `POST /api/sessions/:id/upload` - Upload file (base64, max 50MB).
 - `POST /api/sessions/:id/upload/delete` - Delete uploaded file.

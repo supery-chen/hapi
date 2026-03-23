@@ -45,12 +45,10 @@ export function HappyComposer(props: {
     thinking?: boolean
     agentState?: AgentState | null
     contextSize?: number
-    controlledByUser?: boolean
     agentFlavor?: string | null
     onCollaborationModeChange?: (mode: CodexCollaborationMode) => void
     onPermissionModeChange?: (mode: PermissionMode) => void
     onModelChange?: (model: string | null) => void
-    onSwitchToRemote?: () => void
     onTerminal?: () => void
     autocompletePrefixes?: string[]
     autocompleteSuggestions?: (query: string) => Promise<Suggestion[]>
@@ -66,12 +64,10 @@ export function HappyComposer(props: {
         thinking = false,
         agentState,
         contextSize,
-        controlledByUser = false,
         agentFlavor,
         onCollaborationModeChange,
         onPermissionModeChange,
         onModelChange,
-        onSwitchToRemote,
         onTerminal,
         autocompletePrefixes = ['@', '/', '$'],
         autocompleteSuggestions = defaultSuggestionHandler
@@ -110,11 +106,8 @@ export function HappyComposer(props: {
     })
     const [showSettings, setShowSettings] = useState(false)
     const [isAborting, setIsAborting] = useState(false)
-    const [isSwitching, setIsSwitching] = useState(false)
-    const [showContinueHint, setShowContinueHint] = useState(false)
 
     const textareaRef = useRef<HTMLTextAreaElement>(null)
-    const prevControlledByUser = useRef(controlledByUser)
 
     useEffect(() => {
         setInputState((prev) => {
@@ -125,17 +118,6 @@ export function HappyComposer(props: {
             return { text: composerText, selection: { start: newPos, end: newPos } }
         })
     }, [composerText])
-
-    // Track one-time "continue" hint after switching from local to remote.
-    useEffect(() => {
-        if (prevControlledByUser.current === true && controlledByUser === false) {
-            setShowContinueHint(true)
-        }
-        if (controlledByUser) {
-            setShowContinueHint(false)
-        }
-        prevControlledByUser.current = controlledByUser
-    }, [controlledByUser])
 
     const { haptic: platformHaptic, isTouch } = usePlatform()
     const { isStandalone, isIOS } = usePWAInstall()
@@ -194,8 +176,6 @@ export function HappyComposer(props: {
     }, [api, suggestions, inputState, autocompletePrefixes, haptic])
 
     const abortDisabled = controlsDisabled || isAborting || !threadIsRunning
-    const switchDisabled = controlsDisabled || isSwitching || !controlledByUser
-    const showSwitchButton = Boolean(controlledByUser && onSwitchToRemote)
     const showTerminalButton = Boolean(onTerminal)
 
     useEffect(() => {
@@ -204,29 +184,12 @@ export function HappyComposer(props: {
         setIsAborting(false)
     }, [isAborting, threadIsRunning])
 
-    useEffect(() => {
-        if (!isSwitching) return
-        if (controlledByUser) return
-        setIsSwitching(false)
-    }, [isSwitching, controlledByUser])
-
     const handleAbort = useCallback(() => {
         if (abortDisabled) return
         haptic('error')
         setIsAborting(true)
         api.thread().cancelRun()
     }, [abortDisabled, api, haptic])
-
-    const handleSwitch = useCallback(async () => {
-        if (switchDisabled || !onSwitchToRemote) return
-        haptic('light')
-        setIsSwitching(true)
-        try {
-            await onSwitchToRemote()
-        } catch {
-            setIsSwitching(false)
-        }
-    }, [switchDisabled, onSwitchToRemote, haptic])
 
     const permissionModeOptions = useMemo(
         () => getPermissionModeOptionsForFlavor(agentFlavor),
@@ -258,7 +221,6 @@ export function HappyComposer(props: {
             e.preventDefault()
             if (!canSend) return
             api.composer().send()
-            setShowContinueHint(false)
             return
         }
 
@@ -373,7 +335,6 @@ export function HappyComposer(props: {
             event.preventDefault()
             return
         }
-        setShowContinueHint(false)
     }, [attachmentsReady])
 
     const handlePermissionChange = useCallback((mode: PermissionMode) => {
@@ -598,7 +559,7 @@ export function HappyComposer(props: {
                             <ComposerPrimitive.Input
                                 ref={textareaRef}
                                 autoFocus={!controlsDisabled && !isTouch}
-                                placeholder={showContinueHint ? t('misc.typeMessage') : t('misc.typeAMessage')}
+                                placeholder={t('misc.typeAMessage')}
                                 disabled={controlsDisabled}
                                 maxRows={5}
                                 submitOnEnter={!isTouch}
@@ -623,10 +584,6 @@ export function HappyComposer(props: {
                             abortDisabled={abortDisabled}
                             isAborting={isAborting}
                             onAbort={handleAbort}
-                            showSwitchButton={showSwitchButton}
-                            switchDisabled={switchDisabled}
-                            isSwitching={isSwitching}
-                            onSwitch={handleSwitch}
                             onSend={handleSend}
                         />
                     </div>
