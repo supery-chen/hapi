@@ -11,7 +11,6 @@ Run Codex sessions locally and control them remotely through a Web / PWA / Teleg
 - **AFK Without Stopping** - Step away from your desk? Approve AI requests from your phone with one tap.
 - **Codex Native** - Keep the Codex workflow local while gaining remote control from web and phone.
 - **Terminal Anywhere** - Run commands from your phone or browser, directly connected to the working machine.
-- **Voice Control** - Talk to your AI agent hands-free using the built-in voice assistant.
 
 ## Demo
 
@@ -36,7 +35,6 @@ For self-hosted options (Cloudflare Tunnel, Tailscale), see [Installation](docs/
 
 - [App](docs/guide/pwa.md)
 - [How it Works](docs/guide/how-it-works.md)
-- [Voice Assistant](docs/guide/voice-assistant.md)
 - [Why HAPI](docs/guide/why-hapi.md)
 - [FAQ](docs/guide/faq.md)
 

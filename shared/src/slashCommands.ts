@@ -37,7 +37,7 @@ export type SlashCommandsResponse = z.infer<typeof SlashCommandsResponseSchema>
 
 export const ExecuteSlashCommandRequestSchema = z.object({
     rawInput: z.string().min(1),
-    source: z.enum(['webapp', 'telegram', 'voice'])
+    source: z.enum(['webapp', 'telegram'])
 })
 
 export type ExecuteSlashCommandRequest = z.infer<typeof ExecuteSlashCommandRequestSchema>

@@ -515,7 +515,7 @@ export class SyncEngine {
 
     async executeSlashCommand(
         sessionId: string,
-        payload: { rawInput: string; source: 'webapp' | 'telegram' | 'voice' }
+        payload: { rawInput: string; source: 'webapp' | 'telegram' }
     ): Promise<ExecuteSlashCommandResponse> {
         return await this.rpcGateway.executeSlashCommand(sessionId, payload)
     }

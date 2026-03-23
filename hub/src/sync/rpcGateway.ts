@@ -219,7 +219,7 @@ export class RpcGateway {
 
     async executeSlashCommand(
         sessionId: string,
-        payload: { rawInput: string; source: 'webapp' | 'telegram' | 'voice' }
+        payload: { rawInput: string; source: 'webapp' | 'telegram' }
     ): Promise<ExecuteSlashCommandResponse> {
         return await this.sessionRpc(sessionId, 'executeSlashCommand', payload) as ExecuteSlashCommandResponse
     }

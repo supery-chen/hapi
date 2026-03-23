@@ -4,7 +4,7 @@
 
 ### What is HAPI?
 
-HAPI is a local-first, self-hosted platform for running and controlling AI coding agents (Claude Code, Codex, Gemini, OpenCode) remotely. It lets you start coding sessions on your computer and monitor/control them from your phone.
+HAPI is a local-first, self-hosted platform for running and controlling Codex remotely. It lets you start coding sessions on your computer and monitor/control them from your phone.
 
 ### What does HAPI stand for?
 
@@ -98,10 +98,6 @@ Yes. Open any session and use the chat interface to send messages directly to th
 ### Can I access a terminal remotely?
 
 Yes. Open a session in the web app and tap the Terminal tab for a remote shell.
-
-### How do I use voice control?
-
-Set `ELEVENLABS_API_KEY`, open a session in the web app, and click the microphone button. See [Voice Assistant](./voice-assistant.md).
 
 ## Security
 

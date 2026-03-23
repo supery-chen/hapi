@@ -11,8 +11,7 @@
         "./modes": "./src/modes.ts",
         "./slashCommands": "./src/slashCommands.ts",
         "./schemas": "./src/schemas.ts",
-        "./types": "./src/types.ts",
-        "./voice": "./src/voice.ts"
+        "./types": "./src/types.ts"
     },
     "sideEffects": false,
     "dependencies": {
