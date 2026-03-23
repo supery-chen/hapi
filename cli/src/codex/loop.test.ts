@@ -23,7 +23,7 @@ describe('codex loop', () => {
             messageQueue: queue,
             session: {
                 keepAlive: () => {}
-            } as ApiSessionClient,
+            } as unknown as ApiSessionClient,
             api: {} as ApiClient,
             onSessionReady
         })

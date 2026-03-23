@@ -164,6 +164,24 @@ export class CodexAppServerClient {
         return response as TurnInterruptResponse;
     }
 
+    async readConfig(): Promise<unknown> {
+        return await this.sendRequest('config/read', {}, {
+            timeoutMs: 30_000
+        });
+    }
+
+    async readAccount(refreshToken: boolean = false): Promise<unknown> {
+        return await this.sendRequest('account/read', { refreshToken }, {
+            timeoutMs: 30_000
+        });
+    }
+
+    async readRateLimits(): Promise<unknown> {
+        return await this.sendRequest('account/rateLimits/read', {}, {
+            timeoutMs: 30_000
+        });
+    }
+
     async disconnect(): Promise<void> {
         if (!this.connected) {
             return;

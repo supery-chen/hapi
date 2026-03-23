@@ -4,13 +4,16 @@ import { AgentSessionBase } from '@/agent/sessionBase';
 import type { EnhancedMode, PermissionMode } from './loop';
 import type { CodexCliOverrides } from './utils/codexCliOverrides';
 import type { SessionModel } from '@/api/types';
+import type { CodexStatusSnapshot } from './utils/statusSnapshot';
 
 export class CodexSession extends AgentSessionBase<EnhancedMode> {
     readonly codexArgs?: string[];
     readonly codexCliOverrides?: CodexCliOverrides;
     readonly startedBy: 'runner' | 'terminal';
+    private readonly modelReasoningEffort?: string;
     private latestTokenUsage: Record<string, unknown> | null = null;
     private currentTurnId: string | null = null;
+    private statusSnapshotProvider: (() => Promise<CodexStatusSnapshot>) | null = null;
 
     constructor(opts: {
         api: ApiClient;
@@ -24,6 +27,7 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
         codexCliOverrides?: CodexCliOverrides;
         permissionMode?: PermissionMode;
         model?: SessionModel;
+        modelReasoningEffort?: string;
         collaborationMode?: EnhancedMode['collaborationMode'];
     }) {
         super({
@@ -49,6 +53,7 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
         this.startedBy = opts.startedBy;
         this.permissionMode = opts.permissionMode;
         this.model = opts.model;
+        this.modelReasoningEffort = opts.modelReasoningEffort;
         this.collaborationMode = opts.collaborationMode;
     }
 
@@ -78,6 +83,21 @@ export class CodexSession extends AgentSessionBase<EnhancedMode> {
 
     getCurrentTurnId = (): string | null => {
         return this.currentTurnId;
+    };
+
+    getModelReasoningEffort = (): string | undefined => {
+        return this.modelReasoningEffort;
+    };
+
+    setStatusSnapshotProvider = (provider: (() => Promise<CodexStatusSnapshot>) | null): void => {
+        this.statusSnapshotProvider = provider;
+    };
+
+    getStatusSnapshot = async (): Promise<CodexStatusSnapshot | null> => {
+        if (!this.statusSnapshotProvider) {
+            return null;
+        }
+        return await this.statusSnapshotProvider();
     };
 
     sendAgentMessage = (message: unknown): void => {

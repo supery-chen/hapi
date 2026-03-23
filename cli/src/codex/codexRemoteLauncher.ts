@@ -15,6 +15,7 @@ import { hasCodexCliOverrides } from './utils/codexCliOverrides';
 import { AppServerEventConverter } from './utils/appServerEventConverter';
 import { registerAppServerPermissionHandlers } from './utils/appServerPermissionAdapter';
 import { buildThreadStartParams, buildTurnStartParams } from './utils/appServerConfig';
+import { buildCodexStatusSnapshot } from './utils/statusSnapshot';
 import { shouldIgnoreTerminalEvent } from './utils/terminalEventGuard';
 import {
     RemoteLauncherBase,
@@ -35,6 +36,7 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
     private abortController: AbortController = new AbortController();
     private currentThreadId: string | null = null;
     private currentTurnId: string | null = null;
+    private currentModelProvider: string | null = null;
 
     constructor(session: CodexSession) {
         super(process.env.DEBUG ? session.logPath : undefined);
@@ -499,6 +501,13 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
             onAbort: () => this.handleAbort()
         });
 
+        session.setStatusSnapshotProvider(async () => await buildCodexStatusSnapshot({
+            session,
+            appServerClient,
+            threadId: this.currentThreadId,
+            threadModelProvider: this.currentModelProvider
+        }));
+
         function logActiveHandles(tag: string) {
             if (!process.env.DEBUG) return;
             const anyProc: any = process as any;
@@ -599,6 +608,10 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                             const resumeThread = resumeRecord ? asRecord(resumeRecord.thread) : null;
                             threadId = asString(resumeThread?.id) ?? resumeCandidate;
                             applyResolvedModel(resumeRecord?.model);
+                            this.currentModelProvider = asString(
+                                resumeRecord?.modelProvider
+                                ?? resumeThread?.modelProvider
+                            );
                             logger.debug(`[Codex] Resumed app-server thread ${threadId}`);
                         } catch (error) {
                             logger.warn(`[Codex] Failed to resume app-server thread ${resumeCandidate}, starting new thread`, error);
@@ -613,6 +626,10 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                         const thread = threadRecord ? asRecord(threadRecord.thread) : null;
                         threadId = asString(thread?.id);
                         applyResolvedModel(threadRecord?.model);
+                        this.currentModelProvider = asString(
+                            threadRecord?.modelProvider
+                            ?? thread?.modelProvider
+                        );
                         if (!threadId) {
                             throw new Error('app-server thread/start did not return thread.id');
                         }
@@ -674,6 +691,7 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                     session.sendSessionEvent({ type: 'message', message: 'Process exited unexpectedly' });
                     this.currentTurnId = null;
                     this.currentThreadId = null;
+                    this.currentModelProvider = null;
                     hasThread = false;
                 }
             } finally {
@@ -714,9 +732,11 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
         this.permissionHandler?.reset();
         this.reasoningProcessor?.abort();
         this.diffProcessor?.reset();
+        this.session.setStatusSnapshotProvider(null);
         this.permissionHandler = null;
         this.reasoningProcessor = null;
         this.diffProcessor = null;
+        this.currentModelProvider = null;
 
         logger.debug('[codex-remote]: cleanup done');
     }

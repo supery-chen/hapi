@@ -148,6 +148,8 @@ function createSessionStub() {
         },
         sendUserMessage(text: string) {
             client.sendUserMessage(text);
+        },
+        setStatusSnapshotProvider(_provider: unknown) {
         }
     };
 

@@ -22,59 +22,9 @@ import {
 import { formatMessageWithAttachments } from '@/utils/attachmentFormatter';
 import { getInvokedCwd } from '@/utils/invokedCwd';
 import { listSlashCommands as listPromptSlashCommands } from '@/modules/common/slashCommands';
-import { resolveCodexPermissionModeConfig } from './utils/permissionModeConfig';
-import { extractCodexUsageSummary, formatCompactNumber } from './utils/statusSummary';
+import { formatCodexStatusMarkdown } from './utils/statusSnapshot';
 
 export { emitReadyIfIdle } from './utils/emitReadyIfIdle';
-
-function formatCodexStatusMarkdown(session: CodexSession): string {
-    const rawPermissionMode = session.getPermissionMode();
-    const permissionMode: PermissionMode = rawPermissionMode === 'read-only'
-        || rawPermissionMode === 'safe-yolo'
-        || rawPermissionMode === 'yolo'
-        || rawPermissionMode === 'default'
-        ? rawPermissionMode
-        : 'default';
-    const model = session.getModel() ?? 'auto';
-    const collaborationMode = session.getCollaborationMode() ?? 'default';
-    const mode = 'remote';
-    const threadId = session.sessionId ?? 'unavailable';
-    const turnId = session.getCurrentTurnId() ?? 'idle';
-    const tokenUsage = session.getLatestTokenUsage();
-    const runtimeConfig = resolveCodexPermissionModeConfig(permissionMode);
-    const usage = extractCodexUsageSummary(tokenUsage);
-
-    return [
-        '## Codex Status',
-        '',
-        `- Mode: \`${mode}\``,
-        `- Session ID: \`${threadId}\``,
-        `- Working directory: \`${session.path}\``,
-        `- Model: \`${model}\``,
-        `- Permission mode: \`${permissionMode}\``,
-        `- Approval policy: \`${runtimeConfig.approvalPolicy}\``,
-        `- Sandbox: \`${runtimeConfig.sandbox}\``,
-        `- Collaboration mode: \`${collaborationMode}\``,
-        `- Thinking: \`${session.thinking ? 'yes' : 'no'}\``,
-        `- Active turn: \`${turnId}\``,
-        '',
-        '### Token usage',
-        !usage
-            ? '- No usage reported yet'
-            : `- Total: ${formatCompactNumber(usage.totalTokens)} total (${formatCompactNumber(usage.inputTokens)} input + ${formatCompactNumber(usage.outputTokens)} output)`,
-        !usage || usage.cachedInputTokens <= 0
-            ? ''
-            : `- Cached input: ${formatCompactNumber(usage.cachedInputTokens)}`,
-        !usage || usage.reasoningOutputTokens <= 0
-            ? ''
-            : `- Reasoning output: ${formatCompactNumber(usage.reasoningOutputTokens)}`,
-        '',
-        '### Context window',
-        !usage || usage.modelContextWindow === null
-            ? ''
-            : `- ${usage.contextLeftPercent}% left (${formatCompactNumber(usage.contextUsedTokens)} used / ${formatCompactNumber(usage.modelContextWindow)})`
-    ].filter(Boolean).join('\n');
-}
 
 export async function runCodex(opts: {
     startedBy?: 'runner' | 'terminal';
@@ -246,9 +196,10 @@ export async function runCodex(opts: {
                     message: 'Codex session runtime unavailable'
                 };
             }
+            const snapshot = await runtimeSession.getStatusSnapshot();
             session.sendAgentMessage({
                 type: 'message',
-                message: formatCodexStatusMarkdown(runtimeSession),
+                message: snapshot ? formatCodexStatusMarkdown(snapshot) : 'Status data unavailable',
                 id: randomUUID()
             });
             return {
