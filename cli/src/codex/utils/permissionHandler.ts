@@ -2,7 +2,7 @@
  * Permission Handler for Codex tool approval integration
  * 
  * Handles tool permission requests and responses for Codex sessions.
- * Simpler than Claude's permission handler since we get tool IDs directly.
+ * Simpler than the legacy multi-agent handlers since we get tool IDs directly.
  */
 
 import { logger } from "@/ui/logger";

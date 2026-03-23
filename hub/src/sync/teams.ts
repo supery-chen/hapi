@@ -8,7 +8,7 @@ type TeamStateDelta = Partial<TeamState> & { _action?: 'create' | 'delete' | 'up
 function extractToolBlocks(content: Record<string, unknown>): Array<{ name: string; input: Record<string, unknown> }> {
     const blocks: Array<{ name: string; input: Record<string, unknown> }> = []
 
-    // Claude output format: { type: 'output', data: { type: 'assistant', message: { content: [...] } } }
+    // Assistant output format: { type: 'output', data: { type: 'assistant', message: { content: [...] } } }
     if (content.type === 'output') {
         const data = isObject(content.data) ? content.data : null
         if (!data || data.type !== 'assistant') return blocks

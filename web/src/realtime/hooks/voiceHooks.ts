@@ -103,7 +103,7 @@ export const voiceHooks = {
     },
 
     /**
-     * Called when Claude requests permission for a tool use
+     * Called when Codex requests permission for a tool use
      */
     onPermissionRequested(sessionId: string, requestId: string, toolName: string, toolArgs: unknown) {
         if (VOICE_CONFIG.DISABLE_PERMISSION_REQUESTS) return
@@ -141,7 +141,7 @@ export const voiceHooks = {
     },
 
     /**
-     * Called when Claude Code finishes processing (ready event)
+     * Called when Codex finishes processing (ready event)
      */
     onReady(sessionId: string) {
         if (VOICE_CONFIG.DISABLE_READY_EVENTS) return

@@ -55,11 +55,8 @@ export function createPermissionsRoutes(getSyncEngine: () => SyncEngine | null):
         }
 
         const mode = parsed.data.mode
-        if (mode !== undefined) {
-            const flavor = session.metadata?.flavor ?? 'claude'
-            if (!isPermissionModeAllowedForFlavor(mode, flavor)) {
-                return c.json({ error: 'Invalid permission mode for session flavor' }, 400)
-            }
+        if (mode !== undefined && !isPermissionModeAllowedForFlavor(mode, 'codex')) {
+            return c.json({ error: 'Invalid permission mode for session flavor' }, 400)
         }
         const allowTools = parsed.data.allowTools
         const decision = parsed.data.decision

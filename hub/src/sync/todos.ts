@@ -6,7 +6,7 @@ import type { TodoItem } from '@hapi/protocol/types'
 export { TodoItemSchema, TodosSchema }
 export type { TodoItem }
 
-function extractTodosFromClaudeOutput(content: Record<string, unknown>): TodoItem[] | null {
+function extractTodosFromAssistantOutput(content: Record<string, unknown>): TodoItem[] | null {
     if (content.type !== 'output') return null
 
     const data = isObject(content.data) ? content.data : null
@@ -93,7 +93,7 @@ export function extractTodoWriteTodosFromMessageContent(messageContent: unknown)
 
     if (!isObject(record.content) || typeof record.content.type !== 'string') return null
 
-    return extractTodosFromClaudeOutput(record.content)
+    return extractTodosFromAssistantOutput(record.content)
         ?? extractTodosFromCodexMessage(record.content)
         ?? extractTodosFromAcpMessage(record.content)
 }

@@ -1,13 +1,8 @@
 import { authCommand } from './auth'
-import { claudeCommand } from './claude'
 import { codexCommand } from './codex'
-import { cursorCommand } from './cursor'
 import { connectCommand } from './connect'
 import { runnerCommand } from './runner'
 import { doctorCommand } from './doctor'
-import { geminiCommand } from './gemini'
-import { opencodeCommand } from './opencode'
-import { hookForwarderCommand } from './hookForwarder'
 import { mcpCommand } from './mcp'
 import { notifyCommand } from './notify'
 import { hubCommand } from './hub'
@@ -17,13 +12,9 @@ const COMMANDS: CommandDefinition[] = [
     authCommand,
     connectCommand,
     codexCommand,
-    cursorCommand,
-    geminiCommand,
-    opencodeCommand,
     mcpCommand,
     hubCommand,
     { ...hubCommand, name: 'server' },
-    hookForwarderCommand,
     doctorCommand,
     runnerCommand,
     notifyCommand
@@ -37,7 +28,7 @@ for (const command of COMMANDS) {
 export function resolveCommand(args: string[]): { command: CommandDefinition; context: CommandContext } {
     const subcommand = args[0]
     const command = subcommand ? commandMap.get(subcommand) : undefined
-    const resolvedCommand = command ?? claudeCommand
+    const resolvedCommand = command ?? codexCommand
     const commandArgs = command ? args.slice(1) : args
 
     return {

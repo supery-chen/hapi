@@ -27,11 +27,7 @@ export const MetadataSchema = z.object({
     os: z.string().optional(),
     summary: MetadataSummarySchema.optional(),
     machineId: z.string().optional(),
-    claudeSessionId: z.string().optional(),
     codexSessionId: z.string().optional(),
-    geminiSessionId: z.string().optional(),
-    opencodeSessionId: z.string().optional(),
-    cursorSessionId: z.string().optional(),
     tools: z.array(z.string()).optional(),
     slashCommands: z.array(z.string()).optional(),
     homeDir: z.string().optional(),
@@ -45,7 +41,7 @@ export const MetadataSchema = z.object({
     lifecycleStateSince: z.number().optional(),
     archivedBy: z.string().optional(),
     archiveReason: z.string().optional(),
-    flavor: z.string().nullish(),
+    flavor: z.literal('codex').nullish(),
     worktree: WorktreeMetadataSchema.optional()
 })
 

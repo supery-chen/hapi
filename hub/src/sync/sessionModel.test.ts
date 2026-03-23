@@ -65,15 +65,15 @@ describe('session model', () => {
 
         const session = cache.getOrCreateSession(
             'session-model-config',
-            { path: '/tmp/project', host: 'localhost', flavor: 'claude' },
+            { path: '/tmp/project', host: 'localhost', flavor: 'codex' },
             null,
             'default',
-            'sonnet'
+            'gpt-5.4'
         )
 
-        cache.applySessionConfig(session.id, { model: 'opus[1m]' })
-        expect(cache.getSession(session.id)?.model).toBe('opus[1m]')
-        expect(store.sessions.getSession(session.id)?.model).toBe('opus[1m]')
+        cache.applySessionConfig(session.id, { model: 'gpt-5.2' })
+        expect(cache.getSession(session.id)?.model).toBe('gpt-5.2')
+        expect(store.sessions.getSession(session.id)?.model).toBe('gpt-5.2')
 
         cache.applySessionConfig(session.id, { model: null })
         expect(cache.getSession(session.id)?.model).toBeNull()
@@ -87,10 +87,10 @@ describe('session model', () => {
 
         const session = cache.getOrCreateSession(
             'session-model-heartbeat',
-            { path: '/tmp/project', host: 'localhost', flavor: 'claude' },
+            { path: '/tmp/project', host: 'localhost', flavor: 'codex' },
             null,
             'default',
-            'sonnet'
+            'gpt-5.4'
         )
 
         cache.handleSessionAlive({

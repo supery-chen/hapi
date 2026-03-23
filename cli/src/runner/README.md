@@ -78,21 +78,16 @@ Control Flow:
 
 ## 2. Multi-Agent Support
 
-The runner supports spawning sessions with different AI agents:
+The runner supports spawning Codex sessions:
 
 | Agent | Command | Token Environment |
 |-------|---------|-------------------|
-| `claude` (default) | `hapi claude` | `CLAUDE_CODE_OAUTH_TOKEN` |
 | `codex` | `hapi codex` | `CODEX_HOME` (temp directory with `auth.json`) |
-| `gemini` | `hapi gemini` | - |
-| `opencode` | `hapi opencode` | OpenCode config (no token injection) |
 
 ### Token Authentication
 
 When spawning a session with a token:
-- **Claude**: Sets `CLAUDE_CODE_OAUTH_TOKEN` environment variable
 - **Codex**: Creates temp directory at `os.tmpdir()/hapi-codex-*`, writes token to `auth.json`, sets `CODEX_HOME`
-- **OpenCode**: No token injection; relies on OpenCode's own configuration
 
 ## 3. Session Management
 
@@ -103,7 +98,7 @@ Initiated by mobile app via backend RPC:
 2. `ApiMachineClient` invokes `spawnSession()` handler
 3. `spawnSession()`:
    - Validates/creates directory (with approval flow)
-   - Configures agent-specific token environment
+   - Configures Codex token environment
    - Spawns detached HAPI process with `--hapi-starting-mode remote --started-by runner`
    - Adds to `pidToTrackedSession` map
    - Sets up 15-second awaiter for session webhook

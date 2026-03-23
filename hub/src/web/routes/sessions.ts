@@ -239,7 +239,7 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
             return c.json({ error: 'Invalid body' }, 400)
         }
 
-        const flavor = sessionResult.session.metadata?.flavor ?? 'claude'
+        const flavor = sessionResult.session.metadata?.flavor ?? 'codex'
         const mode = parsed.data.mode
 
         const allowedModes = getPermissionModesForFlavor(flavor)
@@ -271,8 +271,7 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
             return sessionResult
         }
 
-        const flavor = sessionResult.session.metadata?.flavor ?? 'claude'
-        if (flavor !== 'codex') {
+        if (sessionResult.session.metadata?.flavor !== 'codex') {
             return c.json({ error: 'Collaboration mode is only supported for Codex sessions' }, 400)
         }
         if (sessionResult.session.agentState?.controlledByUser === true) {
@@ -311,9 +310,8 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
             return c.json({ error: 'Invalid body' }, 400)
         }
 
-        const flavor = sessionResult.session.metadata?.flavor ?? 'claude'
-        if (flavor !== 'claude') {
-            return c.json({ error: 'Model selection is only supported for Claude sessions' }, 400)
+        if (sessionResult.session.metadata?.flavor !== 'codex') {
+            return c.json({ error: 'Model selection is only supported for Codex sessions' }, 400)
         }
 
         try {
@@ -395,8 +393,7 @@ export function createSessionsRoutes(getSyncEngine: () => SyncEngine | null): Ho
             return sessionResult
         }
 
-        // Get agent type from session metadata, default to 'claude'
-        const agent = sessionResult.session.metadata?.flavor ?? 'claude'
+        const agent = 'codex'
 
         try {
             const result = await engine.listSlashCommands(sessionResult.sessionId, agent)

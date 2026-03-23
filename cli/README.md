@@ -1,14 +1,10 @@
 # hapi CLI
 
-Run Claude Code, Codex, Cursor Agent, Gemini, or OpenCode sessions from your terminal and control them remotely through the hapi hub.
+Run Codex sessions from your terminal and control them remotely through the hapi hub.
 
 ## What it does
 
-- Starts Claude Code sessions and registers them with hapi-hub.
-- Starts Codex mode for OpenAI-based sessions.
-- Starts Cursor Agent mode for Cursor CLI sessions.
-- Starts Gemini mode via ACP (Anthropic Code Plugins).
-- Starts OpenCode mode via ACP and its plugin hook system.
+- Starts Codex sessions and registers them with hapi-hub.
 - Provides an MCP stdio bridge for external tools.
 - Manages a background runner for long-running sessions.
 - Includes diagnostics and auth helpers.
@@ -24,16 +20,9 @@ Run Claude Code, Codex, Cursor Agent, Gemini, or OpenCode sessions from your ter
 
 ### Session commands
 
-- `hapi` - Start a Claude Code session (passes through Claude CLI flags). See `src/index.ts`.
+- `hapi` - Start a Codex session. See `src/index.ts`.
 - `hapi codex` - Start Codex mode. See `src/codex/runCodex.ts`.
 - `hapi codex resume <sessionId>` - Resume existing Codex session.
-- `hapi cursor` - Start Cursor Agent mode. See `src/cursor/runCursor.ts`.
-  Supports `hapi cursor resume <chatId>`, `hapi cursor --continue`, `--mode plan|ask`, `--yolo`, `--model`.
-  Local and remote modes supported; remote uses `agent -p` with stream-json.
-- `hapi gemini` - Start Gemini mode via ACP. See `src/agent/runners/runAgentSession.ts`.
-  Note: Gemini runs in remote mode only; it waits for messages from the hub UI/Telegram.
-- `hapi opencode` - Start OpenCode mode via ACP. See `src/opencode/runOpencode.ts`.
-  Note: OpenCode supports local and remote modes; local mode streams via OpenCode plugins.
 
 ### Authentication
 
@@ -80,7 +69,6 @@ See `src/configuration.ts` for all options.
 
 - `HAPI_HOME` - Config/data directory (default: ~/.hapi).
 - `HAPI_EXPERIMENTAL` - Enable experimental features (true/1/yes).
-- `HAPI_CLAUDE_PATH` - Path to a specific `claude` executable.
 - `HAPI_HTTP_MCP_URL` - Default MCP target for `hapi mcp`.
 
 ### Runner
@@ -106,9 +94,7 @@ Data is stored in `~/.hapi/` (or `$HAPI_HOME`):
 
 ## Requirements
 
-- Claude CLI installed and logged in (`claude` on PATH).
-- Cursor Agent CLI installed (`agent` on PATH) for `hapi cursor`. Install: `curl https://cursor.com/install -fsS | bash` (macOS/Linux), `irm 'https://cursor.com/install?win32=true' | iex` (Windows).
-- OpenCode CLI installed (`opencode` on PATH).
+- Codex CLI installed and logged in.
 - Bun for building from source.
 
 ## Build from source
@@ -130,11 +116,8 @@ bun run build:single-exe
 ## Source structure
 
 - `src/api/` - Bot communication (Socket.IO + REST).
-- `src/claude/` - Claude Code integration.
 - `src/codex/` - Codex mode integration.
-- `src/cursor/` - Cursor Agent integration.
-- `src/agent/` - Multi-agent support (Gemini via ACP).
-- `src/opencode/` - OpenCode ACP + hook integration.
+- `src/agent/` - Shared session/runtime abstractions used by Codex.
 - `src/runner/` - Background service.
 - `src/commands/` - CLI command handlers.
 - `src/ui/` - User interface and diagnostics.

@@ -68,7 +68,7 @@ function unwrapOutputContent(content: unknown): { roleOverride: NormalizedRole |
 
 function formatPlainText(role: NormalizedRole | null, text: string): string {
     if (role === 'assistant') {
-        return `Claude Code: \n<text>${text}</text>`
+        return `Codex: \n<text>${text}</text>`
     }
     return `User sent message: \n<text>${text}</text>`
 }
@@ -82,7 +82,7 @@ export function formatPermissionRequest(
     toolName: string,
     toolArgs: unknown
 ): string {
-    return `Claude Code is requesting permission to use ${toolName} (session ${sessionId}):
+    return `Codex is requesting permission to use ${toolName} (session ${sessionId}):
 <request_id>${requestId}</request_id>
 <tool_name>${toolName}</tool_name>
 <tool_args>${JSON.stringify(toolArgs)}</tool_args>`
@@ -121,9 +121,9 @@ export function formatMessage(message: DecryptedMessage): string | null {
         } else if (item.type === 'tool_use' && !VOICE_CONFIG.DISABLE_TOOL_CALLS) {
             const name = item.name || 'unknown'
             if (VOICE_CONFIG.LIMITED_TOOL_CALLS) {
-                lines.push(`Claude Code is using ${name}`)
+                lines.push(`Codex is using ${name}`)
             } else {
-                lines.push(`Claude Code is using ${name} with arguments: <arguments>${JSON.stringify(item.input)}</arguments>`)
+                lines.push(`Codex is using ${name} with arguments: <arguments>${JSON.stringify(item.input)}</arguments>`)
             }
         }
     }
@@ -200,5 +200,5 @@ export function formatSessionFocus(sessionId: string, _metadata?: SessionMetadat
 }
 
 export function formatReadyEvent(sessionId: string): string {
-    return `Claude Code done working in session: ${sessionId}. The previous message(s) are the summary of the work done. Report this to the human immediately.`
+    return `Codex done working in session: ${sessionId}. The previous message(s) are the summary of the work done. Report this to the human immediately.`
 }

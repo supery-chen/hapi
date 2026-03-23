@@ -92,13 +92,9 @@ describe('sessions routes', () => {
         expect(applySessionConfigCalls).toEqual([])
     })
 
-    it('rejects collaboration mode changes for non-Codex sessions', async () => {
+    it('rejects collaboration mode changes when session metadata is missing', async () => {
         const session = createSession({
-            metadata: {
-                path: '/tmp/project',
-                host: 'localhost',
-                flavor: 'claude'
-            }
+            metadata: null
         })
         const { app, applySessionConfigCalls } = createApp(session)
 

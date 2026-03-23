@@ -7,7 +7,6 @@ import { logger } from '@/ui/logger'
 import { backoff } from '@/utils/time'
 import { apiValidationError } from '@/utils/errorUtils'
 import { AsyncLock } from '@/utils/lock'
-import type { RawJSONLines } from '@/claude/types'
 import { configuration } from '@/configuration'
 import { AGENT_MESSAGE_PAYLOAD_TYPE } from "@hapi/protocol"
 import type { ClientToServerEvents, ServerToClientEvents, Update } from '@hapi/protocol'
@@ -327,47 +326,14 @@ export class ApiSessionClient extends EventEmitter {
         await this.backfillInFlight
     }
 
-    sendClaudeSessionMessage(body: RawJSONLines): void {
-        let content: MessageContent
-
-        if (body.type === 'user' && typeof body.message.content === 'string' && body.isSidechain !== true && body.isMeta !== true) {
-            content = {
-                role: 'user',
-                content: {
-                    type: 'text',
-                    text: body.message.content
-                },
-                meta: {
-                    sentFrom: 'cli'
-                }
+    sendSummaryMessage(summary: string): void {
+        this.updateMetadata((metadata) => ({
+            ...metadata,
+            summary: {
+                text: summary,
+                updatedAt: Date.now()
             }
-        } else {
-            content = {
-                role: 'agent',
-                content: {
-                    type: 'output',
-                    data: body
-                },
-                meta: {
-                    sentFrom: 'cli'
-                }
-            }
-        }
-
-        this.socket.emit('message', {
-            sid: this.sessionId,
-            message: content
-        })
-
-        if (body.type === 'summary' && 'summary' in body && 'leafUuid' in body) {
-            this.updateMetadata((metadata) => ({
-                ...metadata,
-                summary: {
-                    text: body.summary,
-                    updatedAt: Date.now()
-                }
-            }))
-        }
+        }))
     }
 
     sendUserMessage(text: string, meta?: MessageMeta): void {

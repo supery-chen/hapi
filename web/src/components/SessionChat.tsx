@@ -48,7 +48,7 @@ export function SessionChat(props: {
     const agentFlavor = props.session.metadata?.flavor ?? null
     const controlledByUser = props.session.agentState?.controlledByUser === true
     const codexCollaborationModeSupported = agentFlavor === 'codex' && !controlledByUser
-    const { abortSession, switchSession, setPermissionMode, setCollaborationMode, setModel } = useSessionActions(
+    const { abortSession, switchSession, setPermissionMode, setCollaborationMode } = useSessionActions(
         props.api,
         props.session.id,
         agentFlavor,
@@ -219,18 +219,6 @@ export function SessionChat(props: {
         }
     }, [setCollaborationMode, props.onRefresh, haptic])
 
-    // Model mode change handler
-    const handleModelChange = useCallback(async (model: string | null) => {
-        try {
-            await setModel(model)
-            haptic.notification('success')
-            props.onRefresh()
-        } catch (e) {
-            haptic.notification('error')
-            console.error('Failed to set model:', e)
-        }
-    }, [setModel, props.onRefresh, haptic])
-
     // Abort handler
     const handleAbort = useCallback(async () => {
         await abortSession()
@@ -343,7 +331,6 @@ export function SessionChat(props: {
                                 : undefined
                         }
                         onPermissionModeChange={handlePermissionModeChange}
-                        onModelChange={handleModelChange}
                         onSwitchToRemote={handleSwitchToRemote}
                         onTerminal={props.session.active ? handleViewTerminal : undefined}
                         autocompleteSuggestions={props.autocompleteSuggestions}

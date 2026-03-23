@@ -18,7 +18,7 @@ export function registerSessionStore(store: typeof sessionStore) {
 
 /**
  * Static client tools for the realtime voice interface.
- * These tools allow the voice assistant to interact with Claude Code.
+ * These tools allow the voice assistant to interact with Codex.
  */
 export const realtimeClientTools = {
     /**
@@ -55,7 +55,7 @@ export const realtimeClientTools = {
     },
 
     /**
-     * Process a permission request from Claude Code
+     * Process a permission request from Codex
      */
     processPermissionRequest: async (parameters: unknown) => {
         const params = parameters as { decision?: string }

@@ -1,10 +1,9 @@
 import type { AttachmentMetadata } from '@/api/types'
 
 /**
- * Formats attachments for Claude by converting them to @path references.
- * Claude understands the @path format for file references.
+ * Codex accepts file attachments via @path references in the prompt.
  */
-export function formatAttachmentsForClaude(attachments: AttachmentMetadata[] | undefined): string {
+export function formatAttachmentsForCodex(attachments: AttachmentMetadata[] | undefined): string {
     if (!attachments || attachments.length === 0) {
         return ''
     }
@@ -13,13 +12,12 @@ export function formatAttachmentsForClaude(attachments: AttachmentMetadata[] | u
 
 /**
  * Combines text and formatted attachments into a single prompt string.
- * Attachments are formatted as @path references and prepended to the text.
  */
 export function formatMessageWithAttachments(
     text: string,
     attachments: AttachmentMetadata[] | undefined
 ): string {
-    const attachmentText = formatAttachmentsForClaude(attachments)
+    const attachmentText = formatAttachmentsForCodex(attachments)
     if (!attachmentText) {
         return text
     }

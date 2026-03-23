@@ -8,14 +8,10 @@ import {
 } from '@hapi/protocol/schemas'
 import type { CodexCollaborationMode, PermissionMode } from '@hapi/protocol/types'
 import { z } from 'zod'
-import { UsageSchema } from '@/claude/types'
-
-export type Usage = z.infer<typeof UsageSchema>
 
 export type {
     AgentState,
     AttachmentMetadata,
-    ClaudePermissionMode,
     CodexCollaborationMode,
     CodexPermissionMode,
     Metadata,

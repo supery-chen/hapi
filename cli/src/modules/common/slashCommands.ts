@@ -25,11 +25,6 @@ interface InstalledPluginsFile {
         gitCommitSha?: string;
     }>>;
 }
-
-/**
- * Parse frontmatter from a markdown file content.
- * Returns the description (from frontmatter) and the body content.
- */
 function parseFrontmatter(fileContent: string): { description?: string; content: string } {
     // Match frontmatter: starts with ---, ends with ---
     const match = fileContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
@@ -54,19 +49,11 @@ function parseFrontmatter(fileContent: string): { description?: string; content:
  * Returns null if the agent doesn't support user commands.
  */
 function getUserCommandsDir(agent: string): string | null {
-    switch (agent) {
-        case 'claude': {
-            const configDir = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude');
-            return join(configDir, 'commands');
-        }
-        case 'codex': {
-            const codexHome = process.env.CODEX_HOME ?? join(homedir(), '.codex');
-            return join(codexHome, 'prompts');
-        }
-        default:
-            // Gemini and other agents don't have user commands
-            return null;
+    if (agent !== 'codex') {
+        return null;
     }
+    const codexHome = process.env.CODEX_HOME ?? join(homedir(), '.codex');
+    return join(codexHome, 'prompts');
 }
 
 /**
@@ -74,15 +61,10 @@ function getUserCommandsDir(agent: string): string | null {
  * Returns null if the agent doesn't support project commands.
  */
 function getProjectCommandsDir(agent: string, projectDir: string): string | null {
-    switch (agent) {
-        case 'claude':
-            return join(projectDir, '.claude', 'commands');
-        case 'codex':
-            return join(projectDir, '.codex', 'prompts');
-        default:
-            // Gemini and other agents don't have project commands
-            return null;
+    if (agent !== 'codex') {
+        return null;
     }
+    return join(projectDir, '.codex', 'prompts');
 }
 
 /**
@@ -164,9 +146,6 @@ async function scanCommandsDir(
     return commands.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/**
- * Scan user-defined commands from ~/.claude/commands/ or equivalent
- */
 async function scanUserCommands(agent: string): Promise<SlashCommand[]> {
     const dir = getUserCommandsDir(agent);
     if (!dir) {
@@ -175,9 +154,6 @@ async function scanUserCommands(agent: string): Promise<SlashCommand[]> {
     return scanCommandsDir(dir, 'user');
 }
 
-/**
- * Scan project-defined commands from <projectDir>/.claude/commands/ or equivalent.
- */
 async function scanProjectCommands(agent: string, projectDir?: string): Promise<SlashCommand[]> {
     if (!projectDir) {
         return [];
@@ -191,57 +167,9 @@ async function scanProjectCommands(agent: string, projectDir?: string): Promise<
     return scanCommandsDir(dir, 'project');
 }
 
-/**
- * Scan plugin commands from installed Claude plugins.
- * Reads ~/.claude/plugins/installed_plugins.json to find installed plugins,
- * then scans each plugin's commands directory.
- */
 async function scanPluginCommands(agent: string): Promise<SlashCommand[]> {
-    // Only Claude supports plugins for now
-    if (agent !== 'claude') {
-        return [];
-    }
-
-    const configDir = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude');
-    const installedPluginsPath = join(configDir, 'plugins', 'installed_plugins.json');
-
-    try {
-        const content = await readFile(installedPluginsPath, 'utf-8');
-        const installedPlugins = JSON.parse(content) as InstalledPluginsFile;
-
-        if (!installedPlugins.plugins) {
-            return [];
-        }
-
-        const allCommands: SlashCommand[] = [];
-
-        // Process each installed plugin
-        for (const [pluginKey, installations] of Object.entries(installedPlugins.plugins)) {
-            // Plugin key format: "pluginName@marketplace" or "@scope/pluginName@marketplace"
-            // Use the last '@' as the separator between plugin name and marketplace
-            const lastAtIndex = pluginKey.lastIndexOf('@');
-            const pluginName = lastAtIndex > 0 ? pluginKey.substring(0, lastAtIndex) : pluginKey;
-
-            if (installations.length === 0) continue;
-
-            // Sort installations by lastUpdated descending to get the newest one
-            const sortedInstallations = [...installations].sort((a, b) => {
-                return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime();
-            });
-
-            const installation = sortedInstallations[0];
-            if (!installation?.installPath) continue;
-
-            const commandsDir = join(installation.installPath, 'commands');
-            const commands = await scanCommandsDir(commandsDir, 'plugin', pluginName);
-            allCommands.push(...commands);
-        }
-
-        return allCommands.sort((a, b) => a.name.localeCompare(b.name));
-    } catch {
-        // installed_plugins.json doesn't exist or is invalid
-        return [];
-    }
+    void agent
+    return []
 }
 
 /**

@@ -17,7 +17,7 @@ import packageJson from '../../package.json'
 export type SessionStartedBy = 'runner' | 'terminal'
 
 export type SessionBootstrapOptions = {
-    flavor: string
+    flavor: 'codex'
     startedBy?: SessionStartedBy
     workingDirectory?: string
     tag?: string
@@ -48,7 +48,7 @@ export function buildMachineMetadata(): MachineMetadata {
 }
 
 export function buildSessionMetadata(options: {
-    flavor: string
+    flavor: 'codex'
     startedBy: SessionStartedBy
     workingDirectory: string
     machineId: string

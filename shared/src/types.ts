@@ -20,14 +20,9 @@ export { AGENT_MESSAGE_PAYLOAD_TYPE } from './modes'
 
 export type {
     AgentFlavor,
-    ClaudePermissionMode,
     CodexCollaborationMode,
     CodexCollaborationModeOption,
     CodexPermissionMode,
-    CursorPermissionMode,
-    GeminiPermissionMode,
-    OpencodePermissionMode,
-    ClaudeModelPreset,
     PermissionMode,
     PermissionModeOption,
     PermissionModeTone

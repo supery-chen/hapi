@@ -20,7 +20,6 @@ import { useActiveSuggestions } from '@/hooks/useActiveSuggestions'
 import { applySuggestion } from '@/utils/applySuggestion'
 import { usePlatform } from '@/hooks/usePlatform'
 import { usePWAInstall } from '@/hooks/usePWAInstall'
-import { isClaudeFlavor } from '@/lib/agentFlavorUtils'
 import { markSkillUsed } from '@/lib/recent-skills'
 import { FloatingOverlay } from '@/components/ChatInput/FloatingOverlay'
 import { Autocomplete } from '@/components/ChatInput/Autocomplete'
@@ -28,7 +27,7 @@ import { StatusBar } from '@/components/AssistantChat/StatusBar'
 import { ComposerButtons } from '@/components/AssistantChat/ComposerButtons'
 import { AttachmentItem } from '@/components/AssistantChat/AttachmentItem'
 import { useTranslation } from '@/lib/use-translation'
-import { getClaudeComposerModelOptions, getNextClaudeComposerModel } from './claudeModelOptions'
+import { getCodexComposerModelOptions, getNextCodexComposerModel } from './codexModelOptions'
 
 export interface TextInputState {
     text: string
@@ -247,8 +246,8 @@ export function HappyComposer(props: {
         () => agentFlavor === 'codex' ? getCodexCollaborationModeOptions() : [],
         [agentFlavor]
     )
-    const claudeModelOptions = useMemo(
-        () => getClaudeComposerModelOptions(model),
+    const codexModelOptions = useMemo(
+        () => getCodexComposerModelOptions(model),
         [model]
     )
     const permissionModes = useMemo(
@@ -330,9 +329,9 @@ export function HappyComposer(props: {
 
     useEffect(() => {
         const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-            if (e.key === 'm' && (e.metaKey || e.ctrlKey) && onModelChange && isClaudeFlavor(agentFlavor)) {
+            if (e.key === 'm' && (e.metaKey || e.ctrlKey) && onModelChange && agentFlavor === 'codex') {
                 e.preventDefault()
-                onModelChange(getNextClaudeComposerModel(model))
+                onModelChange(getNextCodexComposerModel(model))
                 haptic('light')
             }
         }
@@ -410,7 +409,7 @@ export function HappyComposer(props: {
 
     const showCollaborationSettings = Boolean(onCollaborationModeChange && collaborationModeOptions.length > 0)
     const showPermissionSettings = Boolean(onPermissionModeChange && permissionModeOptions.length > 0)
-    const showModelSettings = Boolean(onModelChange && isClaudeFlavor(agentFlavor))
+    const showModelSettings = Boolean(onModelChange && agentFlavor === 'codex')
     const showSettingsButton = Boolean(showCollaborationSettings || showPermissionSettings || showModelSettings)
     const showAbortButton = true
     const voiceEnabled = Boolean(onVoiceToggle)
@@ -511,7 +510,7 @@ export function HappyComposer(props: {
                                 <div className="px-3 pb-1 text-xs font-semibold text-[var(--app-hint)]">
                                     {t('misc.model')}
                                 </div>
-                                {claudeModelOptions.map((option) => (
+                                {codexModelOptions.map((option) => (
                                     <button
                                         key={option.value ?? 'auto'}
                                         type="button"
@@ -567,7 +566,7 @@ export function HappyComposer(props: {
         showCollaborationSettings,
         showPermissionSettings,
         showModelSettings,
-        claudeModelOptions,
+        codexModelOptions,
         suggestions,
         selectedIndex,
         controlsDisabled,

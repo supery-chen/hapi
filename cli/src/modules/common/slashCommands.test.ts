@@ -5,27 +5,27 @@ import { tmpdir } from 'node:os'
 import { listSlashCommands } from './slashCommands'
 
 describe('listSlashCommands', () => {
-    const originalClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR
+    const originalCodexHome = process.env.CODEX_HOME
     let sandboxDir: string
-    let claudeConfigDir: string
+    let codexHomeDir: string
     let projectDir: string
 
     beforeEach(async () => {
         sandboxDir = await mkdtemp(join(tmpdir(), 'hapi-slash-commands-'))
-        claudeConfigDir = join(sandboxDir, 'global-claude')
+        codexHomeDir = join(sandboxDir, 'global-codex')
         projectDir = join(sandboxDir, 'project')
 
-        process.env.CLAUDE_CONFIG_DIR = claudeConfigDir
+        process.env.CODEX_HOME = codexHomeDir
 
-        await mkdir(join(claudeConfigDir, 'commands'), { recursive: true })
-        await mkdir(join(projectDir, '.claude', 'commands'), { recursive: true })
+        await mkdir(join(codexHomeDir, 'prompts'), { recursive: true })
+        await mkdir(join(projectDir, '.codex', 'prompts'), { recursive: true })
     })
 
     afterEach(async () => {
-        if (originalClaudeConfigDir === undefined) {
-            delete process.env.CLAUDE_CONFIG_DIR
+        if (originalCodexHome === undefined) {
+            delete process.env.CODEX_HOME
         } else {
-            process.env.CLAUDE_CONFIG_DIR = originalClaudeConfigDir
+            process.env.CODEX_HOME = originalCodexHome
         }
 
         await rm(sandboxDir, { recursive: true, force: true })
@@ -33,11 +33,11 @@ describe('listSlashCommands', () => {
 
     it('keeps backward-compatible behavior when projectDir is not provided', async () => {
         await writeFile(
-            join(claudeConfigDir, 'commands', 'global-only.md'),
+            join(codexHomeDir, 'prompts', 'global-only.md'),
             ['---', 'description: Global only', '---', '', 'Global command body'].join('\n')
         )
 
-        const commands = await listSlashCommands('claude')
+        const commands = await listSlashCommands('codex')
         const command = commands.find(cmd => cmd.name === 'global-only')
 
         expect(command).toBeDefined()
@@ -49,11 +49,11 @@ describe('listSlashCommands', () => {
 
     it('loads project-level commands when projectDir is provided', async () => {
         await writeFile(
-            join(projectDir, '.claude', 'commands', 'project-only.md'),
+            join(projectDir, '.codex', 'prompts', 'project-only.md'),
             ['---', 'description: Project only', '---', '', 'Project command body'].join('\n')
         )
 
-        const commands = await listSlashCommands('claude', projectDir)
+        const commands = await listSlashCommands('codex', projectDir)
         const command = commands.find(cmd => cmd.name === 'project-only')
 
         expect(command).toBeDefined()
@@ -63,15 +63,15 @@ describe('listSlashCommands', () => {
 
     it('prefers project command when project and global have same name', async () => {
         await writeFile(
-            join(claudeConfigDir, 'commands', 'shared.md'),
+            join(codexHomeDir, 'prompts', 'shared.md'),
             ['---', 'description: Global shared', '---', '', 'Global body'].join('\n')
         )
         await writeFile(
-            join(projectDir, '.claude', 'commands', 'shared.md'),
+            join(projectDir, '.codex', 'prompts', 'shared.md'),
             ['---', 'description: Project shared', '---', '', 'Project body'].join('\n')
         )
 
-        const commands = await listSlashCommands('claude', projectDir)
+        const commands = await listSlashCommands('codex', projectDir)
         const sharedCommands = commands.filter(cmd => cmd.name === 'shared')
 
         expect(sharedCommands).toHaveLength(1)
@@ -82,13 +82,13 @@ describe('listSlashCommands', () => {
     })
 
     it('loads nested project commands using colon-separated names', async () => {
-        await mkdir(join(projectDir, '.claude', 'commands', 'trellis'), { recursive: true })
+        await mkdir(join(projectDir, '.codex', 'prompts', 'trellis'), { recursive: true })
         await writeFile(
-            join(projectDir, '.claude', 'commands', 'trellis', 'start.md'),
+            join(projectDir, '.codex', 'prompts', 'trellis', 'start.md'),
             ['---', 'description: Trellis start', '---', '', 'Start flow'].join('\n')
         )
 
-        const commands = await listSlashCommands('claude', projectDir)
+        const commands = await listSlashCommands('codex', projectDir)
         const command = commands.find(cmd => cmd.name === 'trellis:start')
 
         expect(command).toBeDefined()
@@ -99,6 +99,6 @@ describe('listSlashCommands', () => {
     it('returns empty project commands when project directory does not exist', async () => {
         const nonExistentProjectDir = join(sandboxDir, 'not-exists')
 
-        await expect(listSlashCommands('claude', nonExistentProjectDir)).resolves.toBeDefined()
+        await expect(listSlashCommands('codex', nonExistentProjectDir)).resolves.toBeDefined()
     })
 })

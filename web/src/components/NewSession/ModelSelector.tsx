@@ -3,13 +3,12 @@ import { MODEL_OPTIONS } from './types'
 import { useTranslation } from '@/lib/use-translation'
 
 export function ModelSelector(props: {
-    agent: AgentType
     model: string
     isDisabled: boolean
     onModelChange: (value: string) => void
 }) {
     const { t } = useTranslation()
-    const options = MODEL_OPTIONS[props.agent]
+    const options = MODEL_OPTIONS.codex
     if (options.length === 0) {
         return null
     }

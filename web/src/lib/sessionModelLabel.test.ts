@@ -9,10 +9,10 @@ describe('getSessionModelLabel', () => {
         })
     })
 
-    it('renders friendly labels for known Claude aliases', () => {
+    it('returns the explicit model label as-is for codex sessions', () => {
         expect(getSessionModelLabel({ model: 'opus' })).toEqual({
             key: 'session.item.model',
-            value: 'Opus'
+            value: 'opus'
         })
     })
 

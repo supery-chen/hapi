@@ -50,18 +50,18 @@ describe('listSkills', () => {
         expect(skills.map((skill) => skill.name)).toEqual(['amis'])
     })
 
-    it('lists user skills from ~/.claude/skills', async () => {
-        await writeSkill(join(homeDir, '.claude', 'skills', 'claude-skill'), 'claude-skill', 'Claude skill')
+    it('lists user skills from ~/.codex/skills', async () => {
+        await writeSkill(join(homeDir, '.codex', 'skills', 'codex-skill'), 'codex-skill', 'Codex skill')
 
         const skills = await listSkills()
 
-        expect(skills.map((skill) => skill.name)).toEqual(['claude-skill'])
+        expect(skills.map((skill) => skill.name)).toEqual(['codex-skill'])
     })
 
-    it('merges user skills from ~/.agents and ~/.claude, preferring ~/.agents', async () => {
+    it('merges user skills from ~/.agents and ~/.codex, preferring ~/.agents', async () => {
         await writeSkill(join(homeDir, '.agents', 'skills', 'alpha'), 'alpha', 'Alpha from agents')
-        await writeSkill(join(homeDir, '.claude', 'skills', 'beta'), 'beta', 'Beta from claude')
-        await writeSkill(join(homeDir, '.claude', 'skills', 'alpha'), 'alpha', 'Alpha from claude')
+        await writeSkill(join(homeDir, '.codex', 'skills', 'beta'), 'beta', 'Beta from codex')
+        await writeSkill(join(homeDir, '.codex', 'skills', 'alpha'), 'alpha', 'Alpha from codex')
 
         const skills = await listSkills()
 
@@ -69,14 +69,14 @@ describe('listSkills', () => {
         expect(skills.find((s) => s.name === 'alpha')?.description).toBe('Alpha from agents')
     })
 
-    it('ignores legacy ~/.codex skills', async () => {
+    it('ignores hidden ~/.codex system skill directories while keeping normal codex skills', async () => {
         await writeSkill(join(homeDir, '.agents', 'skills', 'amis'), 'amis', 'AMIS guide')
         await writeSkill(join(homeDir, '.codex', 'skills', 'hello-agents'), 'helloagents', 'Main skill')
         await writeSkill(join(homeDir, '.codex', 'skills', '.system', 'skill-creator'), 'skill-creator', 'Create skills')
 
         const skills = await listSkills()
 
-        expect(skills.map((skill) => skill.name)).toEqual(['amis'])
+        expect(skills.map((skill) => skill.name)).toEqual(['amis', 'helloagents'])
     })
 
     it('falls back to directory name when frontmatter is missing', async () => {
@@ -105,26 +105,26 @@ describe('listSkills', () => {
         expect(skills.map((skill) => skill.name)).toEqual(['local-skill', 'package-skill', 'root-skill'])
     })
 
-    it('loads project skills from .claude/skills directories', async () => {
+    it('loads project skills from .codex/skills directories', async () => {
         const repoRoot = join(sandboxDir, 'repo')
         const workingDirectory = join(repoRoot, 'apps', 'web')
 
         await mkdir(join(repoRoot, '.git'), { recursive: true })
-        await writeSkill(join(repoRoot, '.claude', 'skills', 'claude-root'), 'claude-root', 'Claude root skill')
-        await writeSkill(join(workingDirectory, '.claude', 'skills', 'claude-local'), 'claude-local', 'Claude local skill')
+        await writeSkill(join(repoRoot, '.codex', 'skills', 'codex-root'), 'codex-root', 'Codex root skill')
+        await writeSkill(join(workingDirectory, '.codex', 'skills', 'codex-local'), 'codex-local', 'Codex local skill')
 
         const skills = await listSkills(workingDirectory)
 
-        expect(skills.map((skill) => skill.name)).toEqual(['claude-local', 'claude-root'])
+        expect(skills.map((skill) => skill.name)).toEqual(['codex-local', 'codex-root'])
     })
 
-    it('prefers .agents project skills over .claude project skills with same name', async () => {
+    it('prefers .agents project skills over .codex project skills with same name', async () => {
         const repoRoot = join(sandboxDir, 'repo')
         const workingDirectory = join(repoRoot, 'apps', 'web')
 
         await mkdir(join(repoRoot, '.git'), { recursive: true })
         await writeSkill(join(workingDirectory, '.agents', 'skills', 'shared'), 'shared', 'From agents')
-        await writeSkill(join(workingDirectory, '.claude', 'skills', 'shared'), 'shared', 'From claude')
+        await writeSkill(join(workingDirectory, '.codex', 'skills', 'shared'), 'shared', 'From codex')
 
         const skills = await listSkills(workingDirectory)
 

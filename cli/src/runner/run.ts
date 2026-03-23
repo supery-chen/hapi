@@ -195,7 +195,7 @@ export async function startRunner(): Promise<void> {
       logger.debugLargeJson('[RUNNER RUN] Spawning session', options);
 
       const { directory, sessionId, machineId, approvedNewDirectoryCreation = true } = options;
-      const agent = options.agent ?? 'claude';
+      const agent = options.agent ?? 'codex';
       const yolo = options.yolo === true;
       const sessionType = options.sessionType ?? 'simple';
       const worktreeName = options.worktreeName;
@@ -309,23 +309,11 @@ export async function startRunner(): Promise<void> {
         // Resolve authentication token if provided
         let extraEnv: Record<string, string> = {};
         if (options.token) {
-          if (options.agent === 'codex') {
-
-            // Create a temporary directory for Codex
-            const codexHomeDir = await fs.mkdtemp(join(os.tmpdir(), 'hapi-codex-'));
-
-            // Write the token to the temporary directory
-            await fs.writeFile(join(codexHomeDir, 'auth.json'), options.token);
-
-            // Set the environment variable for Codex
-            extraEnv = {
-              CODEX_HOME: codexHomeDir
-            };
-          } else if (options.agent === 'claude' || !options.agent) {
-            extraEnv = {
-              CLAUDE_CODE_OAUTH_TOKEN: options.token
-            };
-          }
+          const codexHomeDir = await fs.mkdtemp(join(os.tmpdir(), 'hapi-codex-'));
+          await fs.writeFile(join(codexHomeDir, 'auth.json'), options.token);
+          extraEnv = {
+            CODEX_HOME: codexHomeDir
+          };
         }
 
         if (worktreeInfo) {
@@ -340,30 +328,16 @@ export async function startRunner(): Promise<void> {
         }
 
         // Construct arguments for the CLI
-        const agentCommand = agent === 'codex'
-          ? 'codex'
-          : agent === 'cursor'
-            ? 'cursor'
-            : agent === 'gemini'
-              ? 'gemini'
-              : agent === 'opencode'
-                ? 'opencode'
-                : 'claude';
+        const agentCommand = 'codex';
         const args = [agentCommand];
         if (options.resumeSessionId) {
-            if (agent === 'codex') {
-                args.push('resume', options.resumeSessionId);
-            } else if (agent === 'cursor') {
-                args.push('--resume', options.resumeSessionId);
-            } else {
-                args.push('--resume', options.resumeSessionId);
-            }
+            args.push('resume', options.resumeSessionId);
         }
         args.push('--hapi-starting-mode', 'remote', '--started-by', 'runner');
-        if (options.model && agent !== 'opencode') {
+        if (options.model) {
           args.push('--model', options.model);
         }
-        if (options.modelReasoningEffort && agent === 'codex') {
+        if (options.modelReasoningEffort) {
           args.push('--model-reasoning-effort', options.modelReasoningEffort);
         }
         if (yolo) {

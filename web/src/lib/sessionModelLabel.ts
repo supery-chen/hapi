@@ -1,5 +1,3 @@
-import { getClaudeModelLabel } from '@hapi/protocol'
-
 type SessionModelSource = {
     model?: string | null
 }
@@ -14,7 +12,7 @@ export function getSessionModelLabel(session: SessionModelSource): SessionModelL
     if (explicitModel) {
         return {
             key: 'session.item.model',
-            value: getClaudeModelLabel(explicitModel) ?? explicitModel
+            value: explicitModel
         }
     }
 

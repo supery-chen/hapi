@@ -9,17 +9,14 @@ import { useActiveSuggestions, type Suggestion } from '@/hooks/useActiveSuggesti
 import { useDirectorySuggestions } from '@/hooks/useDirectorySuggestions'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { useTranslation } from '@/lib/use-translation'
-import type { AgentType, CodexReasoningEffort, SessionType } from './types'
+import type { CodexReasoningEffort, SessionType } from './types'
 import { ActionButtons } from './ActionButtons'
-import { AgentSelector } from './AgentSelector'
 import { DirectorySection } from './DirectorySection'
 import { MachineSelector } from './MachineSelector'
 import { ModelSelector } from './ModelSelector'
 import { ReasoningEffortSelector } from './ReasoningEffortSelector'
 import {
-    loadPreferredAgent,
     loadPreferredYoloMode,
-    savePreferredAgent,
     savePreferredYoloMode,
 } from './preferences'
 import { SessionTypeSelector } from './SessionTypeSelector'
@@ -44,7 +41,6 @@ export function NewSession(props: {
     const [directory, setDirectory] = useState('')
     const [suppressSuggestions, setSuppressSuggestions] = useState(false)
     const [isDirectoryFocused, setIsDirectoryFocused] = useState(false)
-    const [agent, setAgent] = useState<AgentType>(loadPreferredAgent)
     const [model, setModel] = useState('auto')
     const [modelReasoningEffort, setModelReasoningEffort] = useState<CodexReasoningEffort>('default')
     const [yoloMode, setYoloMode] = useState(loadPreferredYoloMode)
@@ -59,14 +55,6 @@ export function NewSession(props: {
             worktreeInputRef.current?.focus()
         }
     }, [sessionType])
-
-    useEffect(() => {
-        setModel('auto')
-    }, [agent])
-
-    useEffect(() => {
-        savePreferredAgent(agent)
-    }, [agent])
 
     useEffect(() => {
         savePreferredYoloMode(yoloMode)
@@ -243,14 +231,13 @@ export function NewSession(props: {
                 return
             }
 
-            const resolvedModel = model !== 'auto' && agent !== 'opencode' ? model : undefined
-            const resolvedModelReasoningEffort = agent === 'codex' && modelReasoningEffort !== 'default'
+            const resolvedModel = model !== 'auto' ? model : undefined
+            const resolvedModelReasoningEffort = modelReasoningEffort !== 'default'
                 ? modelReasoningEffort
                 : undefined
             const result = await spawnSession({
                 machineId,
                 directory: trimmedDirectory,
-                agent,
                 model: resolvedModel,
                 modelReasoningEffort: resolvedModelReasoningEffort,
                 yolo: yoloMode,
@@ -313,19 +300,12 @@ export function NewSession(props: {
                 onSessionTypeChange={setSessionType}
                 onWorktreeNameChange={setWorktreeName}
             />
-            <AgentSelector
-                agent={agent}
-                isDisabled={isFormDisabled}
-                onAgentChange={setAgent}
-            />
             <ModelSelector
-                agent={agent}
                 model={model}
                 isDisabled={isFormDisabled}
                 onModelChange={setModel}
             />
             <ReasoningEffortSelector
-                agent={agent}
                 value={modelReasoningEffort}
                 isDisabled={isFormDisabled}
                 onChange={setModelReasoningEffort}

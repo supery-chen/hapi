@@ -2,7 +2,7 @@ import { logger } from '@/ui/logger';
 import { loop, type EnhancedMode, type PermissionMode } from './loop';
 import { MessageQueue2 } from '@/utils/MessageQueue2';
 import { hashObject } from '@/utils/deterministicJson';
-import { registerKillSessionHandler } from '@/claude/registerKillSessionHandler';
+import { registerKillSessionHandler } from '@/utils/registerKillSessionHandler';
 import { randomUUID } from 'node:crypto';
 import type { AgentState } from '@/api/types';
 import type { CodexSession } from './session';
@@ -336,10 +336,17 @@ export async function runCodex(opts: {
         if (!payload || typeof payload !== 'object') {
             throw new Error('Invalid session config payload');
         }
-        const config = payload as { permissionMode?: unknown; collaborationMode?: unknown };
+        const config = payload as { permissionMode?: unknown; model?: unknown; collaborationMode?: unknown };
 
         if (config.permissionMode !== undefined) {
             currentPermissionMode = resolvePermissionMode(config.permissionMode);
+        }
+
+        if (config.model !== undefined) {
+            if (config.model !== null && typeof config.model !== 'string') {
+                throw new Error('Invalid model');
+            }
+            currentModel = config.model ?? undefined;
         }
 
         if (config.collaborationMode !== undefined) {
@@ -347,7 +354,13 @@ export async function runCodex(opts: {
         }
 
         syncSessionMode();
-        return { applied: { permissionMode: currentPermissionMode, collaborationMode: currentCollaborationMode } };
+        return {
+            applied: {
+                permissionMode: currentPermissionMode,
+                model: currentModel ?? null,
+                collaborationMode: currentCollaborationMode
+            }
+        };
     });
 
     try {

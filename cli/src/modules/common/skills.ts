@@ -25,7 +25,7 @@ function getUserSkillsRoots(): string[] {
     const home = getHomeDirectory();
     return [
         join(home, '.agents', 'skills'),
-        join(home, '.claude', 'skills'),
+        join(home, '.codex', 'skills'),
     ];
 }
 
@@ -36,7 +36,7 @@ function getAdminSkillsRoot(): string {
 function getProjectSkillsRoots(directory: string): string[] {
     return [
         join(directory, '.agents', 'skills'),
-        join(directory, '.claude', 'skills'),
+        join(directory, '.codex', 'skills'),
     ];
 }
 

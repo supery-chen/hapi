@@ -1,18 +1,13 @@
-import type { AgentType, CodexReasoningEffort } from './types'
+import type { CodexReasoningEffort } from './types'
 import { CODEX_REASONING_EFFORT_OPTIONS } from './types'
 import { useTranslation } from '@/lib/use-translation'
 
 export function ReasoningEffortSelector(props: {
-    agent: AgentType
     value: CodexReasoningEffort
     isDisabled: boolean
     onChange: (value: CodexReasoningEffort) => void
 }) {
     const { t } = useTranslation()
-
-    if (props.agent !== 'codex') {
-        return null
-    }
 
     return (
         <div className="flex flex-col gap-1.5 px-3 py-3">

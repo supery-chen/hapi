@@ -40,15 +40,15 @@ See `src/router.tsx` for route definitions.
 - Session title from name, summary, or path.
 - Todo progress display.
 - Pending permission request count.
-- Agent flavor label (claude/codex/gemini).
+- Agent flavor label (codex).
 - Model mode display.
 
 ### Chat interface (`src/components/SessionChat.tsx`)
 
 - Message thread with infinite scroll.
 - Composer for sending messages.
-- Permission mode toggle (default/acceptEdits/bypassPermissions/plan).
-- Model selection (default/sonnet/sonnet[1m]/opus/opus[1m]).
+- Permission mode toggle (default/read-only/safe-yolo/yolo).
+- Codex collaboration mode selection (default/plan).
 - Session abort and mode switch controls.
 - Context size display.
 
@@ -79,8 +79,8 @@ See `src/router.tsx` for route definitions.
 Modular session creation:
 - Machine selector
 - Directory input with recent paths
-- Agent type selector
 - Model selector
+- Reasoning effort selector
 - Permission mode toggle (YOLO mode)
 
 ## Authentication
