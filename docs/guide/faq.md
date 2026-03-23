@@ -16,11 +16,7 @@ Yes, HAPI is open source and free to use under the AGPL-3.0-only license.
 
 ### What AI agents does HAPI support?
 
-- **Claude Code** (recommended)
 - **OpenAI Codex**
-- **Cursor Agent**
-- **Google Gemini**
-- **OpenCode**
 
 ## Setup & Installation
 
@@ -170,27 +166,9 @@ rm ~/.hapi/runner.state.json.lock
 hapi runner logs
 ```
 
-### Claude Code not found
+### Codex not found
 
-Install Claude Code or set custom path:
-```bash
-npm install -g @anthropic-ai/claude-code
-# or
-export HAPI_CLAUDE_PATH=/path/to/claude
-```
-
-### Cursor Agent not found
-
-Install Cursor Agent CLI:
-```bash
-# macOS/Linux
-curl https://cursor.com/install -fsS | bash
-
-# Windows (PowerShell)
-irm 'https://cursor.com/install?win32=true' | iex
-```
-
-Ensure `agent` is on your PATH.
+Install Codex CLI and ensure `codex` is on your PATH.
 
 ### How do I run diagnostics?
 
@@ -213,9 +191,9 @@ This checks hub connectivity, token validity, agent availability, and more.
 
 See [Why HAPI](./why-hapi.md) for detailed comparison.
 
-### HAPI vs running Claude Code directly
+### HAPI vs running Codex directly
 
-| Feature | Claude Code | HAPI + Claude Code |
+| Feature | Codex CLI | HAPI + Codex |
 |---------|-------------|-------------------|
 | Remote access | No | Yes |
 | Mobile control | No | Yes |

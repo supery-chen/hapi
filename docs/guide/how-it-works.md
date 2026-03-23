@@ -1,6 +1,6 @@
 # How it Works
 
-HAPI consists of three interconnected components that work together to provide remote AI agent control.
+HAPI consists of three interconnected components that work together to provide remote Codex control.
 
 ## Architecture Overview
 
@@ -47,7 +47,7 @@ HAPI consists of three interconnected components that work together to provide r
 
 ### HAPI CLI
 
-The CLI is a wrapper around AI coding agents (Claude Code, Codex, Cursor Agent, Gemini, OpenCode). It:
+The CLI is a wrapper around Codex. It:
 
 - Starts and manages coding sessions
 - Registers sessions with the HAPI hub
@@ -56,11 +56,8 @@ The CLI is a wrapper around AI coding agents (Claude Code, Codex, Cursor Agent, 
 
 **Key Commands:**
 ```bash
-hapi              # Start Claude Code session
+hapi              # Start OpenAI Codex session
 hapi codex       # Start OpenAI Codex session
-hapi cursor      # Start Cursor Agent session
-hapi gemini      # Start Google Gemini session
-hapi opencode    # Start OpenCode session
 hapi runner start # Run background service for remote session spawning
 ```
 
@@ -92,7 +89,7 @@ A React-based PWA that provides the mobile interface:
 1. User runs `hapi` in terminal
          │
          ▼
-2. CLI starts Claude Code (or other agent)
+2. CLI starts Codex
          │
          ▼
 3. CLI connects to hub via Socket.IO

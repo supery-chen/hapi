@@ -44,7 +44,7 @@ The terminal will display a URL and QR code for remote access.
 hapi
 ```
 
-This starts Claude Code wrapped with HAPI. The session appears in the web UI.
+This starts Codex wrapped with HAPI. The session appears in the web UI.
 
 ## Open the UI
 
@@ -56,7 +56,7 @@ Enter your access token to log in.
 
 ## Next steps
 
-- [Seamless Handoff](./how-it-works.md#seamless-handoff) - Switch between terminal and phone seamlessly
+- [Remote Control](./how-it-works.md#remote-control) - Control Codex from phone and web
 - [Hub setup](./installation.md#hub-setup) - Access HAPI from anywhere
 - [Notifications](./installation.md#telegram-setup) - Set up Telegram notifications
 - [Install the App](./pwa.md) - Add HAPI to your home screen

@@ -6,7 +6,7 @@ Short guide for AI agents in this repo. Prefer progressive loading: start with t
 
 ## What is HAPI?
 
-Local-first platform for running AI coding agents (Claude Code, Codex, Gemini) with remote control via web/phone. CLI wraps agents and connects to hub; hub serves web app and handles real-time sync.
+Local-first platform for running Codex with remote control via web/phone. CLI wraps Codex and connects to hub; hub serves web app and handles real-time sync.
 
 ## Repo layout
 
@@ -29,14 +29,14 @@ Bun workspaces; `shared` consumed by cli, hub, web.
 │ (agent) │              │ (server)│              │  (PWA)  │
 └─────────┘              └─────────┘              └─────────┘
      │                        │                        │
-     ├─ Wraps Claude/Codex    ├─ SQLite persistence   ├─ TanStack Query
+     ├─ Wraps Codex           ├─ SQLite persistence   ├─ TanStack Query
      ├─ Socket.IO client      ├─ Session cache        ├─ SSE for updates
      └─ RPC handlers          ├─ RPC gateway          └─ assistant-ui
                               └─ Telegram bot
 ```
 
 **Data flow:**
-1. CLI spawns agent (claude/codex/gemini), connects to hub via Socket.IO
+1. CLI spawns Codex, connects to hub via Socket.IO
 2. Agent events → CLI → hub (socket `message` event) → DB + SSE broadcast
 3. Web subscribes to SSE `/api/events`, receives live updates
 4. User actions → Web → hub REST API → RPC to CLI → agent
@@ -73,9 +73,8 @@ bun run build:single-exe # All-in-one binary
 
 ### CLI (`cli/src/`)
 - `api/` - Hub connection (Socket.IO client, auth)
-- `claude/` - Claude Code integration (wrapper, hooks)
 - `codex/` - Codex mode integration
-- `agent/` - Multi-agent support (Gemini via ACP)
+- `agent/` - Shared session/runtime support used by Codex
 - `runner/` - Background daemon for remote spawn
 - `commands/` - CLI subcommands (auth, runner, doctor)
 - `modules/` - Tool implementations (ripgrep, difftastic, git)
@@ -136,8 +135,8 @@ bun run build:single-exe # All-in-one binary
 
 - **RPC**: CLI registers handlers (`rpc-register`), hub routes requests via `rpcGateway.ts`
 - **Versioned updates**: CLI sends `update-metadata`/`update-state` with version; hub rejects stale
-- **Session modes**: `local` (terminal) vs `remote` (web-controlled); switchable mid-session
-- **Permission modes**: `default`, `acceptEdits`, `bypassPermissions`, `plan`
+- **Execution model**: Codex sessions are remote-controlled via hub/web; no local handoff mode
+- **Permission modes**: `default`, `read-only`, `safe-yolo`, `yolo`
 - **Namespaces**: Multi-user isolation via `CLI_API_TOKEN:<namespace>` suffix
 
 ## Critical Thinking
