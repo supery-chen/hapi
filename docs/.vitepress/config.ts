@@ -22,8 +22,7 @@ export default defineConfig({
       { text: 'Installation', link: '/guide/installation' },
       { text: 'PWA', link: '/guide/pwa' },
       { text: 'How it Works', link: '/guide/how-it-works' },
-      { text: 'Cursor Agent', link: '/guide/cursor' },
-      { text: 'Voice Assistant', link: '/guide/voice-assistant' },
+      { text: 'Codex App-Server Review', link: '/guide/codex-app-server-review' },
       { text: 'Why HAPI', link: '/guide/why-hapi' },
       { text: 'FAQ', link: '/guide/faq' }
     ],
