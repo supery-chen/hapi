@@ -4,6 +4,12 @@ import { killProcessByChildProcess } from '@/utils/process';
 import type {
     InitializeParams,
     InitializeResponse,
+    ReviewStartParams,
+    ReviewStartResponse,
+    ThreadCompactStartParams,
+    ThreadCompactStartResponse,
+    ThreadRollbackParams,
+    ThreadRollbackResponse,
     ThreadStartParams,
     ThreadStartResponse,
     ThreadResumeParams,
@@ -149,6 +155,20 @@ export class CodexAppServerClient {
         return response as ThreadResumeResponse;
     }
 
+    async startThreadCompaction(params: ThreadCompactStartParams): Promise<ThreadCompactStartResponse> {
+        const response = await this.sendRequest('thread/compact/start', params, {
+            timeoutMs: 30_000
+        });
+        return response as ThreadCompactStartResponse;
+    }
+
+    async rollbackThread(params: ThreadRollbackParams): Promise<ThreadRollbackResponse> {
+        const response = await this.sendRequest('thread/rollback', params, {
+            timeoutMs: 30_000
+        });
+        return response as ThreadRollbackResponse;
+    }
+
     async startTurn(params: TurnStartParams, options?: { signal?: AbortSignal }): Promise<TurnStartResponse> {
         const response = await this.sendRequest('turn/start', params, {
             signal: options?.signal,
@@ -162,6 +182,14 @@ export class CodexAppServerClient {
             timeoutMs: 30_000
         });
         return response as TurnInterruptResponse;
+    }
+
+    async startReview(params: ReviewStartParams, options?: { signal?: AbortSignal }): Promise<ReviewStartResponse> {
+        const response = await this.sendRequest('review/start', params, {
+            signal: options?.signal,
+            timeoutMs: CodexAppServerClient.DEFAULT_TIMEOUT_MS
+        });
+        return response as ReviewStartResponse;
     }
 
     async readConfig(): Promise<unknown> {

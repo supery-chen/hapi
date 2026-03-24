@@ -16,6 +16,7 @@ import {
     TerminalResizePayloadSchema,
     TerminalWritePayloadSchema
 } from '@hapi/protocol'
+import type { CodexStatusSnapshot } from '@hapi/protocol/types'
 import type {
     AgentState,
     MessageContent,
@@ -382,6 +383,9 @@ export class ApiSessionClient extends EventEmitter {
     } | {
         type: 'permission-mode-changed'
         mode: SessionPermissionMode
+    } | {
+        type: 'status'
+        snapshot: CodexStatusSnapshot
     } | {
         type: 'ready'
     }, id?: string): void {

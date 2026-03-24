@@ -48,9 +48,12 @@ export function useSlashCommands(
             return await api.getSlashCommands(sessionId)
         },
         enabled: Boolean(api && sessionId),
-        staleTime: Infinity,
+        staleTime: 0,
         gcTime: 30 * 60 * 1000,
         retry: false,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
     })
 
     const commands = useMemo(() => {

@@ -115,6 +115,43 @@ describe('AppServerEventConverter', () => {
         expect(events).toEqual([{ type: 'agent_reasoning_delta', delta: 'step' }]);
     });
 
+    it('maps exited review mode completion into an agent message', () => {
+        const converter = new AppServerEventConverter();
+
+        const completed = converter.handleNotification('item/completed', {
+            item: {
+                id: 'review-1',
+                type: 'exitedReviewMode',
+                review: 'Found a regression in auth middleware.'
+            }
+        });
+
+        expect(completed).toEqual([{
+            type: 'agent_message',
+            message: 'Found a regression in auth middleware.'
+        }]);
+    });
+
+    it('maps context compaction lifecycle items', () => {
+        const converter = new AppServerEventConverter();
+
+        const started = converter.handleNotification('item/started', {
+            item: {
+                id: 'compact-1',
+                type: 'contextCompaction'
+            }
+        });
+        const completed = converter.handleNotification('item/completed', {
+            item: {
+                id: 'compact-1',
+                type: 'contextCompaction'
+            }
+        });
+
+        expect(started).toEqual([{ type: 'context_compaction_started' }]);
+        expect(completed).toEqual([{ type: 'context_compaction_completed' }]);
+    });
+
     it('deduplicates repeated reasoning completions for the same item', () => {
         const converter = new AppServerEventConverter();
 

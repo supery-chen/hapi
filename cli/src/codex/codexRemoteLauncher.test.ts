@@ -150,6 +150,8 @@ function createSessionStub() {
             client.sendUserMessage(text);
         },
         setStatusSnapshotProvider(_provider: unknown) {
+        },
+        setSlashCommandRuntimeProvider(_provider: unknown) {
         }
     };
 

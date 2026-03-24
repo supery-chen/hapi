@@ -143,6 +143,68 @@ export const AttachmentMetadataSchema = z.object({
 
 export type AttachmentMetadata = z.infer<typeof AttachmentMetadataSchema>
 
+const StatusRecordSchema = z.record(z.string(), z.unknown())
+
+export const CodexStatusSnapshotSchema = z.object({
+    threadId: z.string().nullable(),
+    rolloutSessionId: z.string().nullable(),
+    cliVersion: z.string(),
+    model: z.object({
+        name: z.string().nullable(),
+        reasoningEffort: z.string().nullable(),
+        summary: z.string().nullable()
+    }),
+    modelProvider: z.object({
+        name: z.string().nullable(),
+        endpoint: z.string().nullable(),
+        source: z.enum(['config', 'session_meta', 'thread', 'unknown'])
+    }),
+    directory: z.string(),
+    permissions: z.object({
+        sandbox: z.string().nullable(),
+        approvalPolicy: z.string().nullable(),
+        label: z.string()
+    }),
+    agentsMd: z.object({
+        exists: z.boolean(),
+        path: z.string().nullable()
+    }),
+    account: z.object({
+        mode: z.enum(['apiKey', 'chatgpt', 'none', 'unknown']),
+        label: z.string()
+    }),
+    collaborationMode: z.object({
+        mode: z.string()
+    }),
+    tokenUsage: z.object({
+        total: z.number().nullable(),
+        input: z.number().nullable(),
+        output: z.number().nullable(),
+        reasoning: z.number().nullable(),
+        cachedInput: z.number().nullable(),
+        last: z.object({
+            total: z.number().nullable(),
+            input: z.number().nullable(),
+            output: z.number().nullable()
+        }).nullable()
+    }),
+    contextWindow: z.object({
+        max: z.number().nullable(),
+        used: z.number().nullable(),
+        remaining: z.number().nullable(),
+        percentLeft: z.number().nullable(),
+        formula: z.string().nullable()
+    }),
+    limits: z.object({
+        primary: StatusRecordSchema.nullable(),
+        secondary: StatusRecordSchema.nullable(),
+        label: z.string()
+    }),
+    updatedAt: z.string()
+})
+
+export type CodexStatusSnapshot = z.infer<typeof CodexStatusSnapshotSchema>
+
 export const DecryptedMessageSchema = z.object({
     id: z.string(),
     seq: z.number().nullable(),

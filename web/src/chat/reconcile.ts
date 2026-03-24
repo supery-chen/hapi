@@ -82,6 +82,18 @@ function getEventKey(event: AgentEvent): string {
             return `switch:${event.mode}`
         case 'message':
             return `message:${event.message}`
+        case 'status': {
+            const snapshot = 'snapshot' in event && event.snapshot && typeof event.snapshot === 'object'
+                ? event.snapshot as { updatedAt?: unknown; threadId?: unknown }
+                : null
+            const updatedAt = snapshot && typeof snapshot.updatedAt === 'string'
+                ? snapshot.updatedAt
+                : 'unknown'
+            const threadId = snapshot && typeof snapshot.threadId === 'string'
+                ? snapshot.threadId
+                : 'none'
+            return `status:${updatedAt}:${threadId}`
+        }
         case 'title-changed':
             return `title:${event.title}`
         case 'limit-reached':

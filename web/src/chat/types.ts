@@ -1,4 +1,4 @@
-import type { AttachmentMetadata, MessageStatus } from '@/types/api'
+import type { AttachmentMetadata, CodexStatusSnapshot, MessageStatus } from '@/types/api'
 
 export type UsageData = {
     input_tokens: number
@@ -10,6 +10,7 @@ export type UsageData = {
 
 export type AgentEvent =
     | { type: 'message'; message: string }
+    | { type: 'status'; snapshot: CodexStatusSnapshot }
     | { type: 'title-changed'; title: string }
     | { type: 'limit-reached'; endsAt: number }
     | { type: 'ready' }

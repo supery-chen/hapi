@@ -41,6 +41,28 @@ describe('statusSnapshot', () => {
         expect(fallback.sessionMeta?.id).toBe('thr_123')
         expect(fallback.turnContext?.model).toBe('gpt-5.4')
         expect(fallback.tokenCountInfo?.modelContextWindow).toBe(1000)
+        expect(fallback.matchType).toBe('thread')
+    })
+
+    it('does not reuse a cwd-only rollout when a different live thread id is present', async () => {
+        const dayDir = join(sandboxDir, 'sessions', '2026', '03', '24')
+        await mkdir(dayDir, { recursive: true })
+        const filePath = join(dayDir, 'rollout-test-thr_old.jsonl')
+        await writeFile(filePath, [
+            JSON.stringify({ type: 'session_meta', payload: { id: 'thr_old', cwd: '/repo', model_provider: 'openai' } }),
+            JSON.stringify({ type: 'turn_context', payload: { model: 'gpt-5.4', model_reasoning_effort: 'high' } }),
+            JSON.stringify({ type: 'event_msg', payload: { type: 'token_count', info: { total: { totalTokens: 100, inputTokens: 80, outputTokens: 20 } } } })
+        ].join('\n'))
+
+        const fallback = await readCodexRolloutStatusFallback({
+            threadId: 'thr_live',
+            cwd: '/repo'
+        })
+
+        expect(fallback.sessionMeta).toBeNull()
+        expect(fallback.turnContext).toBeNull()
+        expect(fallback.tokenCountInfo).toBeNull()
+        expect(fallback.matchType).toBe('none')
     })
 
     it('formats a rich markdown status report', () => {

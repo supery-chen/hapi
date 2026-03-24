@@ -421,6 +421,28 @@ export class AppServerEventConverter {
                 return events;
             }
 
+            if (itemType === 'exitedreviewmode') {
+                if (method === 'item/completed') {
+                    const review = asString(item.review) ?? extractItemText(item);
+                    if (review) {
+                        events.push({ type: 'agent_message', message: review });
+                    }
+                }
+                return events;
+            }
+
+            if (itemType === 'contextcompaction') {
+                if (method === 'item/started') {
+                    events.push({ type: 'context_compaction_started' });
+                }
+
+                if (method === 'item/completed') {
+                    events.push({ type: 'context_compaction_completed' });
+                }
+
+                return events;
+            }
+
             if (itemType === 'commandexecution') {
                 if (method === 'item/started') {
                     const command = extractCommand(item.command ?? item.cmd ?? item.args);

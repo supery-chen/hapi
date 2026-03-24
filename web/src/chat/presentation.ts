@@ -50,6 +50,9 @@ export function getEventPresentation(event: AgentEvent): EventPresentation {
     if (event.type === 'message') {
         return { icon: null, text: typeof event.message === 'string' ? event.message : 'Message' }
     }
+    if (event.type === 'status') {
+        return { icon: '◌', text: 'Codex status' }
+    }
     if (event.type === 'turn-duration') {
         const ms = typeof event.durationMs === 'number' ? event.durationMs : 0
         return { icon: '⏱️', text: `Turn: ${formatDuration(ms)}` }

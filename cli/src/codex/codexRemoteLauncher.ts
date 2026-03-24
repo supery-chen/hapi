@@ -265,6 +265,8 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                 if (message) {
                     messageBuffer.addMessage(message, 'assistant');
                 }
+            } else if (msgType === 'context_compaction_started') {
+                messageBuffer.addMessage('Compacting conversation context...', 'status');
             } else if (msgType === 'agent_reasoning') {
                 const text = asString(msg.text);
                 if (text) {
@@ -347,6 +349,20 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                         id: randomUUID()
                     });
                 }
+            }
+            if (msgType === 'context_compaction_started') {
+                session.sendAgentMessage({
+                    type: 'message',
+                    message: 'Compacting conversation context...',
+                    id: randomUUID()
+                });
+            }
+            if (msgType === 'context_compaction_completed') {
+                session.sendAgentMessage({
+                    type: 'message',
+                    message: 'Conversation compacted.',
+                    id: randomUUID()
+                });
             }
             if (msgType === 'exec_command_begin' || msgType === 'exec_approval_request') {
                 const callId = asString(msg.call_id ?? msg.callId);
@@ -496,17 +512,52 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
 
         const { server: happyServer, mcpServers } = await buildHapiMcpBridge(session.client);
         this.happyServer = happyServer;
+        let hasThread = false;
+
+        const buildCurrentModeForSlashCommand = (): EnhancedMode => ({
+            permissionMode: (session.getPermissionMode() ?? 'default') as EnhancedMode['permissionMode'],
+            model: session.getModel() ?? undefined,
+            modelReasoningEffort: session.getModelReasoningEffort(),
+            collaborationMode: (session.getCollaborationMode() ?? 'default') as EnhancedMode['collaborationMode']
+        });
+
+        const ensureThreadLoadedForSlashCommands = async (): Promise<string> => {
+            if (this.currentThreadId) {
+                return this.currentThreadId;
+            }
+
+            const threadResponse = await appServerClient.startThread(buildThreadStartParams({
+                cwd: session.path,
+                mode: buildCurrentModeForSlashCommand(),
+                mcpServers,
+                cliOverrides: session.codexCliOverrides
+            }), {
+                signal: this.abortController.signal
+            });
+
+            const threadRecord = asRecord(threadResponse);
+            const thread = threadRecord ? asRecord(threadRecord.thread) : null;
+            const threadId = asString(thread?.id);
+
+            applyResolvedModel(threadRecord?.model);
+            this.currentModelProvider = asString(
+                threadRecord?.modelProvider
+                ?? thread?.modelProvider
+            );
+
+            if (!threadId) {
+                throw new Error('app-server thread/start did not return thread.id');
+            }
+
+            this.currentThreadId = threadId;
+            session.onSessionFound(threadId);
+            hasThread = true;
+            return threadId;
+        };
 
         this.setupAbortHandlers(session.client.rpcHandlerManager, {
             onAbort: () => this.handleAbort()
         });
-
-        session.setStatusSnapshotProvider(async () => await buildCodexStatusSnapshot({
-            session,
-            appServerClient,
-            threadId: this.currentThreadId,
-            threadModelProvider: this.currentModelProvider
-        }));
 
         function logActiveHandles(tag: string) {
             if (!process.env.DEBUG) return;
@@ -535,7 +586,43 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
             }
         });
 
-        let hasThread = false;
+        session.setStatusSnapshotProvider(async () => await buildCodexStatusSnapshot({
+            session,
+            appServerClient,
+            threadId: this.currentThreadId,
+            threadModelProvider: this.currentModelProvider
+        }));
+        session.setSlashCommandRuntimeProvider({
+            startReview: async (target) => {
+                const threadId = await ensureThreadLoadedForSlashCommands();
+
+                await appServerClient.startReview({
+                    threadId,
+                    target,
+                    delivery: 'inline'
+                }, {
+                    signal: this.abortController.signal
+                });
+            },
+            startThreadCompaction: async () => {
+                const threadId = await ensureThreadLoadedForSlashCommands();
+
+                await appServerClient.startThreadCompaction({
+                    threadId
+                });
+            },
+            rollbackThread: async (numTurns) => {
+                if (!this.currentThreadId) {
+                    throw new Error('No active Codex thread available for /undo');
+                }
+
+                await appServerClient.rollbackThread({
+                    threadId: this.currentThreadId,
+                    numTurns
+                });
+            }
+        });
+
         let pending: QueuedMessage | null = null;
 
         clearReadyAfterTurnTimer = () => {
@@ -733,6 +820,7 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
         this.reasoningProcessor?.abort();
         this.diffProcessor?.reset();
         this.session.setStatusSnapshotProvider(null);
+        this.session.setSlashCommandRuntimeProvider(null);
         this.permissionHandler = null;
         this.reasoningProcessor = null;
         this.diffProcessor = null;

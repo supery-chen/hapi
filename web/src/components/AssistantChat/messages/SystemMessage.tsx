@@ -1,6 +1,8 @@
 import { useAssistantState } from '@assistant-ui/react'
+import { CodexStatusSnapshotSchema } from '@hapi/protocol/schemas'
 import { getEventPresentation } from '@/chat/presentation'
 import type { HappyChatMessageMetadata } from '@/lib/assistant-runtime'
+import { StatusSnapshotCard } from '@/components/AssistantChat/messages/StatusSnapshotCard'
 
 export function HappySystemMessage() {
     const role = useAssistantState(({ message }) => message.role)
@@ -14,8 +16,23 @@ export function HappySystemMessage() {
         const event = custom?.kind === 'event' ? custom.event : undefined
         return event ? getEventPresentation(event).icon : null
     })
+    const rawStatusSnapshot = useAssistantState(({ message }) => {
+        if (message.role !== 'system') return null
+        const custom = message.metadata.custom as Partial<HappyChatMessageMetadata> | undefined
+        const event = custom?.kind === 'event' ? custom.event : undefined
+        if (!event || event.type !== 'status') return null
+        return event.snapshot ?? null
+    })
+    const parsedStatusSnapshot = rawStatusSnapshot
+        ? CodexStatusSnapshotSchema.safeParse(rawStatusSnapshot)
+        : null
+    const statusSnapshot = parsedStatusSnapshot?.success ? parsedStatusSnapshot.data : null
 
     if (role !== 'system') return null
+
+    if (statusSnapshot) {
+        return <StatusSnapshotCard snapshot={statusSnapshot} />
+    }
 
     return (
         <div className="py-1">

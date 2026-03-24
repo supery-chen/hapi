@@ -11,6 +11,7 @@ import type {
 export type {
     AgentState,
     AttachmentMetadata,
+    CodexStatusSnapshot,
     CodexCollaborationMode,
     PermissionMode,
     Session,

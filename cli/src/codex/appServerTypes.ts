@@ -66,6 +66,27 @@ export interface ThreadResumeResponse {
     [key: string]: unknown;
 }
 
+export interface ThreadCompactStartParams {
+    threadId: string;
+}
+
+export interface ThreadCompactStartResponse {
+    [key: string]: unknown;
+}
+
+export interface ThreadRollbackParams {
+    threadId: string;
+    numTurns: number;
+}
+
+export interface ThreadRollbackResponse {
+    thread?: {
+        id: string;
+        [key: string]: unknown;
+    };
+    [key: string]: unknown;
+}
+
 export type UserInput =
     | {
         type: 'text';
@@ -142,5 +163,40 @@ export interface TurnInterruptParams {
 
 export interface TurnInterruptResponse {
     ok: boolean;
+    [key: string]: unknown;
+}
+
+export type ReviewDelivery = 'inline' | 'detached';
+
+export type ReviewTarget =
+    | {
+        type: 'uncommittedChanges';
+    }
+    | {
+        type: 'baseBranch';
+        branch: string;
+    }
+    | {
+        type: 'commit';
+        sha: string;
+        title: string | null;
+    }
+    | {
+        type: 'custom';
+        instructions: string;
+    };
+
+export interface ReviewStartParams {
+    threadId: string;
+    target: ReviewTarget;
+    delivery?: ReviewDelivery | null;
+}
+
+export interface ReviewStartResponse {
+    turn?: {
+        id: string;
+        status?: string;
+    };
+    reviewThreadId?: string;
     [key: string]: unknown;
 }

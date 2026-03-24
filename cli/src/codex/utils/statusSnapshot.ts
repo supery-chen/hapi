@@ -1,6 +1,7 @@
 import { access, readFile, readdir, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join, normalize, resolve } from 'node:path'
+import type { CodexStatusSnapshot } from '@hapi/protocol/types'
 import packageJson from '../../../package.json'
 import type { CodexSession } from '../session'
 import type { CodexAppServerClient } from '../codexAppServerClient'
@@ -8,68 +9,13 @@ import { formatCompactNumber } from './statusSummary'
 
 type RecordLike = Record<string, unknown>
 
-export type CodexStatusSnapshot = {
-    threadId: string | null
-    rolloutSessionId: string | null
-    cliVersion: string
-    model: {
-        name: string | null
-        reasoningEffort: string | null
-        summary: string | null
-    }
-    modelProvider: {
-        name: string | null
-        endpoint: string | null
-        source: 'config' | 'session_meta' | 'thread' | 'unknown'
-    }
-    directory: string
-    permissions: {
-        sandbox: string | null
-        approvalPolicy: string | null
-        label: string
-    }
-    agentsMd: {
-        exists: boolean
-        path: string | null
-    }
-    account: {
-        mode: 'apiKey' | 'chatgpt' | 'none' | 'unknown'
-        label: string
-    }
-    collaborationMode: {
-        mode: string
-    }
-    tokenUsage: {
-        total: number | null
-        input: number | null
-        output: number | null
-        reasoning: number | null
-        cachedInput: number | null
-        last: {
-            total: number | null
-            input: number | null
-            output: number | null
-        } | null
-    }
-    contextWindow: {
-        max: number | null
-        used: number | null
-        remaining: number | null
-        percentLeft: number | null
-        formula: string | null
-    }
-    limits: {
-        primary: RecordLike | null
-        secondary: RecordLike | null
-        label: string
-    }
-    updatedAt: string
-}
+type RolloutMatchType = 'thread' | 'cwd' | 'none'
 
 type RolloutFallback = {
     sessionMeta: RecordLike | null
     turnContext: RecordLike | null
     tokenCountInfo: RecordLike | null
+    matchType: RolloutMatchType
 }
 
 function asRecord(value: unknown): RecordLike | null {
@@ -325,7 +271,10 @@ async function listJsonlFiles(dir: string): Promise<string[]> {
     }
 }
 
-async function findBestRolloutFile(threadId: string | null, cwd: string): Promise<string | null> {
+async function findBestRolloutFile(threadId: string | null, cwd: string): Promise<{
+    file: string | null
+    matchType: RolloutMatchType
+}> {
     const codexHome = process.env.CODEX_HOME ?? join(homedir(), '.codex')
     const root = join(codexHome, 'sessions')
     const files = await listJsonlFiles(root)
@@ -333,8 +282,10 @@ async function findBestRolloutFile(threadId: string | null, cwd: string): Promis
 
     const candidates = await Promise.all(files.map(async (file) => {
         let score = Number.MAX_SAFE_INTEGER
+        let matchType: Exclude<RolloutMatchType, 'none'> | null = null
         if (threadId && file.endsWith(`-${threadId}.jsonl`)) {
             score = 0
+            matchType = 'thread'
         } else {
             try {
                 const content = await readFile(file, 'utf8')
@@ -347,10 +298,12 @@ async function findBestRolloutFile(threadId: string | null, cwd: string): Promis
                     const payloadCwd = asString(payload?.cwd)
                     if (threadId && id === threadId) {
                         score = 0
+                        matchType = 'thread'
                         break
                     }
-                    if (payloadCwd && normalizePath(payloadCwd) === normalizedCwd) {
+                    if (!threadId && payloadCwd && normalizePath(payloadCwd) === normalizedCwd) {
                         score = Math.min(score, 1)
+                        matchType = 'cwd'
                     }
                 }
             } catch {
@@ -364,29 +317,34 @@ async function findBestRolloutFile(threadId: string | null, cwd: string): Promis
 
         try {
             const fileStat = await stat(file)
-            return { file, score, mtimeMs: fileStat.mtimeMs }
+            return { file, score, mtimeMs: fileStat.mtimeMs, matchType }
         } catch {
-            return { file, score, mtimeMs: 0 }
+            return { file, score, mtimeMs: 0, matchType }
         }
     }))
 
     const best = candidates
-        .filter((value): value is { file: string; score: number; mtimeMs: number } => Boolean(value))
+        .filter((value): value is { file: string; score: number; mtimeMs: number; matchType: Exclude<RolloutMatchType, 'none'> | null } => Boolean(value))
         .sort((left, right) => left.score - right.score || right.mtimeMs - left.mtimeMs)[0]
 
-    return best?.file ?? null
+    return {
+        file: best?.file ?? null,
+        matchType: best?.matchType ?? 'none'
+    }
 }
 
 export async function readCodexRolloutStatusFallback(args: {
     threadId: string | null
     cwd: string
 }): Promise<RolloutFallback> {
-    const file = await findBestRolloutFile(args.threadId, args.cwd)
+    const result = await findBestRolloutFile(args.threadId, args.cwd)
+    const file = result.file
     if (!file) {
         return {
             sessionMeta: null,
             turnContext: null,
-            tokenCountInfo: null
+            tokenCountInfo: null,
+            matchType: 'none'
         }
     }
 
@@ -422,14 +380,16 @@ export async function readCodexRolloutStatusFallback(args: {
         return {
             sessionMeta: null,
             turnContext: null,
-            tokenCountInfo: null
+            tokenCountInfo: null,
+            matchType: 'none'
         }
     }
 
     return {
         sessionMeta,
         turnContext,
-        tokenCountInfo
+        tokenCountInfo,
+        matchType: result.matchType
     }
 }
 
@@ -448,7 +408,8 @@ export async function buildCodexStatusSnapshot(args: {
         readCodexRolloutStatusFallback({ threadId, cwd: session.path }).catch(() => ({
             sessionMeta: null,
             turnContext: null,
-            tokenCountInfo: null
+            tokenCountInfo: null,
+            matchType: 'none' as const
         })),
         detectAgentsMd(session.path)
     ])

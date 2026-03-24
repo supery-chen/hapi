@@ -3,7 +3,6 @@ import { loop, type EnhancedMode, type PermissionMode } from './loop';
 import { MessageQueue2 } from '@/utils/MessageQueue2';
 import { hashObject } from '@/utils/deterministicJson';
 import { registerKillSessionHandler } from '@/utils/registerKillSessionHandler';
-import { randomUUID } from 'node:crypto';
 import type { AgentState } from '@/api/types';
 import type { CodexSession } from './session';
 import { parseCodexCliOverrides } from './utils/codexCliOverrides';
@@ -14,15 +13,13 @@ import { CodexCollaborationModeSchema, PermissionModeSchema } from '@hapi/protoc
 import {
     type ExecuteSlashCommandRequest,
     type ExecuteSlashCommandResponse,
-    type SlashCommandDefinition,
     type SlashCommandsResponse,
     ExecuteSlashCommandRequestSchema,
     parseSlashCommandInput
 } from '@hapi/protocol/slashCommands';
 import { formatMessageWithAttachments } from '@/utils/attachmentFormatter';
 import { getInvokedCwd } from '@/utils/invokedCwd';
-import { listSlashCommands as listPromptSlashCommands } from '@/modules/common/slashCommands';
-import { formatCodexStatusMarkdown } from './utils/statusSnapshot';
+import { executeCodexSlashCommand, listCodexSlashCommands } from './slashCommands';
 
 export { emitReadyIfIdle } from './utils/emitReadyIfIdle';
 
@@ -71,24 +68,6 @@ export async function runCodex(opts: {
 
     lifecycle.registerProcessHandlers();
     registerKillSessionHandler(session.rpcHandlerManager, lifecycle.cleanupAndExit);
-
-    const buildCommandList = async (): Promise<SlashCommandDefinition[]> => {
-        const builtinStatus: SlashCommandDefinition = {
-            name: 'status',
-            description: 'Show current session configuration and token usage',
-            source: 'builtin',
-            kind: 'action',
-            availability: 'both',
-            argPolicy: 'none',
-            webSupported: true,
-            discoverable: true
-        };
-        const promptCommands = await listPromptSlashCommands('codex', workingDirectory);
-        return [
-            builtinStatus,
-            ...promptCommands.filter((command) => command.name !== builtinStatus.name)
-        ];
-    };
 
     const syncSessionMode = () => {
         const sessionInstance = sessionWrapperRef.current;
@@ -139,7 +118,7 @@ export async function runCodex(opts: {
     });
 
     session.rpcHandlerManager.registerHandler<undefined, SlashCommandsResponse>('listSlashCommands', async () => {
-        const commands = await buildCommandList();
+        const commands = await listCodexSlashCommands(workingDirectory);
         return { success: true, commands };
     });
 
@@ -162,7 +141,7 @@ export async function runCodex(opts: {
             };
         }
 
-        const commands = await buildCommandList();
+        const commands = await listCodexSlashCommands(workingDirectory);
         const command = commands.find((candidate) => candidate.name === parsedInput.commandName);
         if (!command) {
             return {
@@ -188,49 +167,27 @@ export async function runCodex(opts: {
             commandName: command.name
         });
 
-        if (command.kind === 'action' && command.name === 'status') {
-            if (!runtimeSession) {
-                return {
-                    ok: false,
-                    code: 'unsupported',
-                    message: 'Codex session runtime unavailable'
-                };
-            }
-            const snapshot = await runtimeSession.getStatusSnapshot();
-            session.sendAgentMessage({
-                type: 'message',
-                message: snapshot ? formatCodexStatusMarkdown(snapshot) : 'Status data unavailable',
-                id: randomUUID()
-            });
-            return {
-                ok: true,
-                handled: true,
-                commandName: command.name,
-                emittedMessages: true
-            };
-        }
-
-        if (command.kind === 'prompt-template' && command.content) {
-            const enhancedMode: EnhancedMode = {
-                permissionMode: currentPermissionMode ?? 'default',
-                model: currentModel,
-                modelReasoningEffort: currentModelReasoningEffort,
-                collaborationMode: currentCollaborationMode
-            };
-            messageQueue.push(command.content, enhancedMode);
-            return {
-                ok: true,
-                handled: true,
-                commandName: command.name,
-                emittedMessages: true
-            };
-        }
-
-        return {
-            ok: false,
-            code: 'unsupported',
-            message: `/${command.name} is not supported by the web executor`
+        const enhancedMode: EnhancedMode = {
+            permissionMode: currentPermissionMode ?? 'default',
+            model: currentModel,
+            modelReasoningEffort: currentModelReasoningEffort,
+            collaborationMode: currentCollaborationMode
         };
+
+        return await executeCodexSlashCommand({
+            command,
+            parsedInput,
+            output: {
+                sendAgentMessage: (message) => session.sendAgentMessage(message),
+                sendSessionEvent: (event) => session.sendSessionEvent(event)
+            },
+            runtimeSession,
+            workingDirectory,
+            queuePrompt: (content, mode) => {
+                messageQueue.push(content, mode);
+            },
+            currentMode: enhancedMode
+        });
     });
 
     const formatFailureReason = (message: string): string => {
