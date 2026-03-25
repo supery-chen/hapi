@@ -4,6 +4,10 @@ import { killProcessByChildProcess } from '@/utils/process';
 import type {
     InitializeParams,
     InitializeResponse,
+    McpServerStatusListParams,
+    McpServerStatusListResponse,
+    SkillsListParams,
+    SkillsListResponse,
     ReviewStartParams,
     ReviewStartResponse,
     ThreadCompactStartParams,
@@ -208,6 +212,20 @@ export class CodexAppServerClient {
         return await this.sendRequest('account/rateLimits/read', {}, {
             timeoutMs: 30_000
         });
+    }
+
+    async listMcpServerStatuses(params: McpServerStatusListParams = {}): Promise<McpServerStatusListResponse> {
+        const response = await this.sendRequest('mcpServerStatus/list', params, {
+            timeoutMs: 30_000
+        });
+        return response as McpServerStatusListResponse;
+    }
+
+    async listSkills(params: SkillsListParams): Promise<SkillsListResponse> {
+        const response = await this.sendRequest('skills/list', params, {
+            timeoutMs: 30_000
+        });
+        return response as SkillsListResponse;
     }
 
     async disconnect(): Promise<void> {

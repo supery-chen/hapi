@@ -25,6 +25,7 @@ import { useSession } from '@/hooks/queries/useSession'
 import { useSessions } from '@/hooks/queries/useSessions'
 import { useSlashCommands } from '@/hooks/queries/useSlashCommands'
 import { useSkills } from '@/hooks/queries/useSkills'
+import { useFileSuggestions } from '@/hooks/queries/useFileSuggestions'
 import { useSendMessage } from '@/hooks/mutations/useSendMessage'
 import { queryKeys } from '@/lib/query-keys'
 import { useToast } from '@/lib/toast-context'
@@ -353,13 +354,19 @@ function SessionPage() {
     const {
         getSuggestions: getSkillSuggestions,
     } = useSkills(api, sessionId)
+    const {
+        getSuggestions: getFileSuggestions,
+    } = useFileSuggestions(api, sessionId)
 
     const getAutocompleteSuggestions = useCallback(async (query: string) => {
+        if (query.startsWith('@')) {
+            return await getFileSuggestions(query)
+        }
         if (query.startsWith('$')) {
             return await getSkillSuggestions(query)
         }
         return await getSlashSuggestions(query)
-    }, [getSkillSuggestions, getSlashSuggestions])
+    }, [getFileSuggestions, getSkillSuggestions, getSlashSuggestions])
 
     const refreshSelectedSession = useCallback(() => {
         void refetchSession()

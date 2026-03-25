@@ -54,6 +54,26 @@ function createBuiltinCommand(name: string): SlashCommandDefinition {
             discoverable: true
         },
         {
+            name: 'mcp',
+            description: 'List MCP servers',
+            source: 'builtin',
+            kind: 'action',
+            availability: 'both',
+            argPolicy: 'none',
+            webSupported: true,
+            discoverable: true
+        },
+        {
+            name: 'skills',
+            description: 'List skills',
+            source: 'builtin',
+            kind: 'action',
+            availability: 'both',
+            argPolicy: 'none',
+            webSupported: true,
+            discoverable: true
+        },
+        {
             name: 'compact',
             description: 'Compact thread',
             source: 'builtin',
@@ -97,6 +117,8 @@ describe('codex slash commands', () => {
         const commands = await listCodexSlashCommands('/tmp/project');
         expect(commands.some((command) => command.name === 'status')).toBe(true);
         expect(commands.some((command) => command.name === 'help')).toBe(true);
+        expect(commands.some((command) => command.name === 'mcp')).toBe(true);
+        expect(commands.some((command) => command.name === 'skills')).toBe(true);
         expect(commands.some((command) => command.name === 'review')).toBe(true);
         expect(commands.some((command) => command.name === 'compact')).toBe(true);
         expect(commands.some((command) => command.name === 'undo')).toBe(true);
@@ -156,6 +178,134 @@ describe('codex slash commands', () => {
         expect(sendAgentMessage).toHaveBeenCalledTimes(1);
     });
 
+    it('executes /mcp as a local assistant message', async () => {
+        const sendAgentMessage = vi.fn();
+
+        const result = await executeCodexSlashCommand({
+            command: createBuiltinCommand('mcp'),
+            parsedInput: {
+                kind: 'slash',
+                rawInput: '/mcp',
+                commandName: 'mcp',
+                rawTail: ''
+            },
+            output: {
+                sendAgentMessage,
+                sendSessionEvent: vi.fn()
+            },
+            runtimeSession: {
+                getSlashCommandRuntimeProvider: () => ({
+                    startReview: vi.fn(async () => {}),
+                    startThreadCompaction: vi.fn(async () => {}),
+                    rollbackThread: vi.fn(async () => {}),
+                    listMcpServers: vi.fn(async () => ({
+                        config: {
+                            config: {
+                                mcp_servers: {
+                                    acemcp: {
+                                        command: 'npx',
+                                        args: ['acemcp-node'],
+                                        enabled: true
+                                    }
+                                }
+                            }
+                        },
+                        statuses: [{
+                            name: 'acemcp',
+                            authStatus: 'unsupported',
+                            tools: {
+                                search_context: {
+                                    name: 'search_context'
+                                }
+                            },
+                            resources: [],
+                            resourceTemplates: []
+                        }]
+                    }))
+                })
+            } as never,
+            workingDirectory: '/tmp/project',
+            queuePrompt: vi.fn(),
+            currentMode: createMode()
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            handled: true,
+            commandName: 'mcp',
+            emittedMessages: true
+        });
+        expect(sendAgentMessage).toHaveBeenCalledTimes(1);
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('MCP Tools');
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('Status: enabled');
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('Auth: Unsupported');
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('Command: npx acemcp-node');
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('Tools: search_context');
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('Resources: (none)');
+    });
+
+    it('executes /skills as a local assistant message', async () => {
+        const sendAgentMessage = vi.fn();
+
+        const result = await executeCodexSlashCommand({
+            command: createBuiltinCommand('skills'),
+            parsedInput: {
+                kind: 'slash',
+                rawInput: '/skills',
+                commandName: 'skills',
+                rawTail: ''
+            },
+            output: {
+                sendAgentMessage,
+                sendSessionEvent: vi.fn()
+            },
+            runtimeSession: {
+                getSlashCommandRuntimeProvider: () => ({
+                    startReview: vi.fn(async () => {}),
+                    startThreadCompaction: vi.fn(async () => {}),
+                    rollbackThread: vi.fn(async () => {}),
+                    listMcpServers: vi.fn(async () => ({
+                        config: null,
+                        statuses: []
+                    })),
+                    listSkills: vi.fn(async () => ([
+                        {
+                            name: 'openai-docs',
+                            description: 'Reference official OpenAI docs, including upgrade guidance',
+                            enabled: true,
+                            scope: 'system',
+                            interface: {
+                                displayName: 'OpenAI Docs',
+                                shortDescription: 'Reference official OpenAI docs, including upgrade guidance'
+                            }
+                        },
+                        {
+                            name: 'pretty-mermaid',
+                            description: 'Render beautiful Mermaid diagrams as SVG or ASCII art using the beautiful-mermaid library.',
+                            enabled: true,
+                            scope: 'user'
+                        }
+                    ]))
+                })
+            } as never,
+            workingDirectory: '/tmp/project',
+            queuePrompt: vi.fn(),
+            currentMode: createMode()
+        });
+
+        expect(result).toEqual({
+            ok: true,
+            handled: true,
+            commandName: 'skills',
+            emittedMessages: true
+        });
+        expect(sendAgentMessage).toHaveBeenCalledTimes(1);
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('Skills');
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('OpenAI Docs');
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('[Skill] Reference official OpenAI docs, including upgrade guidance');
+        expect(sendAgentMessage.mock.calls[0]?.[0]?.message).toContain('pretty-mermaid');
+    });
+
     it('executes /review by queueing a review prompt', async () => {
         const queuePrompt = vi.fn();
         const sendAgentMessage = vi.fn();
@@ -206,7 +356,12 @@ describe('codex slash commands', () => {
                 getSlashCommandRuntimeProvider: () => ({
                     startReview: vi.fn(async () => {}),
                     startThreadCompaction: vi.fn(async () => {}),
-                    rollbackThread: vi.fn(async () => {})
+                    rollbackThread: vi.fn(async () => {}),
+                    listMcpServers: vi.fn(async () => ({
+                        config: null,
+                        statuses: []
+                    })),
+                    listSkills: vi.fn(async () => [])
                 })
             } as never,
             workingDirectory: '/tmp/project',

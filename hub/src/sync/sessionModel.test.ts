@@ -129,7 +129,7 @@ describe('session model', () => {
         expect(cache.getSession(session.id)?.collaborationMode).toBe('default')
     })
 
-    it('passes the stored model when respawning a resumed session', async () => {
+    it('passes the stored resume settings when respawning a resumed session', async () => {
         const store = new Store(':memory:')
         const engine = new SyncEngine(
             store,
@@ -146,12 +146,14 @@ describe('session model', () => {
                     host: 'localhost',
                     machineId: 'machine-1',
                     flavor: 'codex',
-                    codexSessionId: 'codex-thread-1'
+                    codexSessionId: 'codex-thread-1',
+                    modelReasoningEffort: 'xhigh'
                 },
                 null,
                 'default',
                 'gpt-5.4'
             )
+            session.permissionMode = 'safe-yolo'
             engine.getOrCreateMachine(
                 'machine-1',
                 { host: 'localhost', platform: 'linux', happyCliVersion: '0.1.0' },
@@ -160,14 +162,27 @@ describe('session model', () => {
             )
             engine.handleMachineAlive({ machineId: 'machine-1', time: Date.now() })
 
-            let capturedModel: string | undefined
+            let capturedArgs: Record<string, unknown> | null = null
             ;(engine as any).rpcGateway.spawnSession = async (
-                _machineId: string,
-                _directory: string,
-                _agent: string,
-                model?: string
+                machineId: string,
+                directory: string,
+                agent: string,
+                model?: string,
+                modelReasoningEffort?: string,
+                permissionMode?: string,
+                _sessionType?: string,
+                _worktreeName?: string,
+                resumeSessionId?: string
             ) => {
-                capturedModel = model
+                capturedArgs = {
+                    machineId,
+                    directory,
+                    agent,
+                    model,
+                    modelReasoningEffort,
+                    permissionMode,
+                    resumeSessionId
+                }
                 return { type: 'success', sessionId: session.id }
             }
             ;(engine as any).waitForSessionActive = async () => true
@@ -175,7 +190,94 @@ describe('session model', () => {
             const result = await engine.resumeSession(session.id, 'default')
 
             expect(result).toEqual({ type: 'success', sessionId: session.id })
-            expect(capturedModel).toBe('gpt-5.4')
+            expect(capturedArgs).not.toBeNull()
+            expect(capturedArgs!).toEqual({
+                machineId: 'machine-1',
+                directory: '/tmp/project',
+                agent: 'codex',
+                model: 'gpt-5.4',
+                modelReasoningEffort: 'xhigh',
+                permissionMode: 'safe-yolo',
+                resumeSessionId: 'codex-thread-1'
+            })
+        } finally {
+            engine.stop()
+        }
+    })
+
+    it('fresh-spawns and merges sessions when resume token is unavailable', async () => {
+        const store = new Store(':memory:')
+        const engine = new SyncEngine(
+            store,
+            {} as never,
+            new RpcRegistry(),
+            { broadcast() {} } as never
+        )
+
+        try {
+            const session = engine.getOrCreateSession(
+                'session-resume-fallback-old',
+                {
+                    path: '/tmp/project',
+                    host: 'localhost',
+                    machineId: 'machine-1',
+                    flavor: 'codex',
+                    modelReasoningEffort: 'high'
+                },
+                null,
+                'default',
+                'gpt-5.4'
+            )
+            store.messages.addMessage(session.id, {
+                role: 'user',
+                content: { type: 'text', text: '/skills' }
+            })
+            engine.getOrCreateMachine(
+                'machine-1',
+                { host: 'localhost', platform: 'linux', happyCliVersion: '0.1.0' },
+                null,
+                'default'
+            )
+            engine.handleMachineAlive({ machineId: 'machine-1', time: Date.now() })
+
+            let capturedResumeSessionId: string | undefined
+            let spawnedSessionId: string | null = null
+            ;(engine as any).rpcGateway.spawnSession = async (
+                _machineId: string,
+                _directory: string,
+                _agent: string,
+                model?: string,
+                _modelReasoningEffort?: string,
+                _permissionMode?: string,
+                _sessionType?: string,
+                _worktreeName?: string,
+                resumeSessionId?: string
+            ) => {
+                capturedResumeSessionId = resumeSessionId
+                const spawned = engine.getOrCreateSession(
+                    'session-resume-fallback-new',
+                    {
+                        path: '/tmp/project',
+                        host: 'localhost',
+                        machineId: 'machine-1',
+                        flavor: 'codex',
+                        codexSessionId: 'codex-thread-new'
+                    },
+                    null,
+                    'default',
+                    model
+                )
+                spawnedSessionId = spawned.id
+                return { type: 'success', sessionId: spawned.id }
+            }
+            ;(engine as any).waitForSessionActive = async () => true
+
+            const result = await engine.resumeSession(session.id, 'default')
+
+            expect(capturedResumeSessionId).toBeUndefined()
+            expect(result).toEqual({ type: 'success', sessionId: spawnedSessionId! })
+            expect(engine.getSession(session.id)).toBeUndefined()
+            expect(store.messages.getMessages(spawnedSessionId!)).toHaveLength(1)
         } finally {
             engine.stop()
         }

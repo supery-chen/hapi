@@ -66,12 +66,25 @@ export function SessionHeader(props: {
     onViewFiles?: () => void
     api: ApiClient | null
     onSessionDeleted?: () => void
+    contextLeftPercent?: number | null
+    contextWindow?: number | null
 }) {
     const { t } = useTranslation()
     const { session, api, onSessionDeleted } = props
     const title = useMemo(() => getSessionTitle(session), [session])
     const worktreeBranch = session.metadata?.worktree?.branch
     const modelLabel = getSessionModelLabel(session)
+    const reasoningEffort = session.metadata?.modelReasoningEffort ?? null
+    const contextLabel = typeof props.contextLeftPercent === 'number'
+        ? `${props.contextLeftPercent}% left`
+        : null
+    const subtitleParts = [
+        modelLabel?.value ?? null,
+        reasoningEffort,
+        contextLabel,
+        session.metadata?.path ?? null,
+        worktreeBranch ? `worktree:${worktreeBranch}` : null
+    ].filter((value): value is string => Boolean(value && value.trim()))
 
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuAnchorPoint, setMenuAnchorPoint] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -135,19 +148,8 @@ export function SessionHeader(props: {
                         <div className="truncate font-semibold">
                             {title}
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[var(--app-hint)]">
-                            <span className="inline-flex items-center gap-1">
-                                <span aria-hidden="true">❖</span>
-                                {session.metadata?.flavor?.trim() || 'unknown'}
-                            </span>
-                            {modelLabel ? (
-                                <span>
-                                    {t(modelLabel.key)}: {modelLabel.value}
-                                </span>
-                            ) : null}
-                            {worktreeBranch ? (
-                                <span>{t('session.item.worktree')}: {worktreeBranch}</span>
-                            ) : null}
+                        <div className="truncate text-xs text-[var(--app-hint)]">
+                            {subtitleParts.join(' · ')}
                         </div>
                     </div>
 

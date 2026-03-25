@@ -4,7 +4,7 @@ import type {
     ParsedSlashCommandInput,
     SlashCommandDefinition
 } from '@hapi/protocol/slashCommands';
-import type { ReviewTarget } from './appServerTypes';
+import type { McpServerStatusEntry, ReviewTarget, SkillListEntry } from './appServerTypes';
 import type { EnhancedMode } from './loop';
 import type { CodexSession } from './session';
 import { listSlashCommands as listPromptSlashCommands } from '@/modules/common/slashCommands';
@@ -14,6 +14,12 @@ type SlashCommandSessionEvent = Parameters<CodexSession['sendSessionEvent']>[0];
 type SlashCommandOutput = {
     sendAgentMessage: (message: unknown) => void;
     sendSessionEvent: (event: SlashCommandSessionEvent) => void;
+};
+
+type McpServerConfigEntry = {
+    command: string | null;
+    args: string[];
+    enabled: boolean | null;
 };
 
 type ExecuteCodexSlashCommandArgs = {
@@ -40,6 +46,26 @@ const BUILTIN_COMMANDS: SlashCommandDefinition[] = [
     {
         name: 'help',
         description: 'Show available slash commands',
+        source: 'builtin',
+        kind: 'action',
+        availability: 'both',
+        argPolicy: 'none',
+        webSupported: true,
+        discoverable: true
+    },
+    {
+        name: 'mcp',
+        description: 'List configured MCP servers and their status',
+        source: 'builtin',
+        kind: 'action',
+        availability: 'both',
+        argPolicy: 'none',
+        webSupported: true,
+        discoverable: true
+    },
+    {
+        name: 'skills',
+        description: 'List available skills for the current working directory',
         source: 'builtin',
         kind: 'action',
         availability: 'both',
@@ -106,6 +132,8 @@ function renderSlashHelp(commands: SlashCommandDefinition[]): string {
         '- `/review branch main`',
         '- `/review commit abc123 Fix login flow`',
         '- `/review investigate recent diff for auth regressions`',
+        '- `/mcp`',
+        '- `/skills`',
         '- `/compact`',
         '- `/undo`',
         '- `/undo 2`'
@@ -144,6 +172,283 @@ function buildHandledResult(commandName: string, emittedMessages: boolean): Exec
         commandName,
         emittedMessages
     };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+    return value as Record<string, unknown>;
+}
+
+function asString(value: unknown): string | null {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function asBoolean(value: unknown): boolean | null {
+    return typeof value === 'boolean' ? value : null;
+}
+
+function asStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .map((entry) => asString(entry))
+        .filter((entry): entry is string => Boolean(entry));
+}
+
+function formatCommandPart(value: string): string {
+    return /^[A-Za-z0-9_./:@%+=,-]+$/.test(value) ? value : JSON.stringify(value);
+}
+
+function formatCommand(command: string | null, args: string[]): string {
+    if (!command) {
+        return '(unknown)';
+    }
+
+    return [command, ...args]
+        .map((part) => formatCommandPart(part))
+        .join(' ');
+}
+
+function formatAuthStatus(value: string | null): string {
+    if (!value) {
+        return 'Unknown';
+    }
+
+    const normalized = value.trim().toLowerCase();
+    switch (normalized) {
+        case 'unsupported':
+            return 'Unsupported';
+        case 'authenticated':
+            return 'Authenticated';
+        case 'not_authenticated':
+        case 'not-authenticated':
+            return 'Not authenticated';
+        case 'oauth_required':
+        case 'oauth-required':
+            return 'OAuth required';
+        default:
+            return normalized
+                .split(/[_-\s]+/)
+                .filter(Boolean)
+                .map((part) => part === 'oauth' ? 'OAuth' : `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+                .join(' ');
+    }
+}
+
+function formatNamedCollection(
+    value: unknown,
+    options?: {
+        unavailable?: boolean;
+    }
+): string {
+    if (options?.unavailable) {
+        return '(unavailable)';
+    }
+
+    if (!Array.isArray(value) || value.length === 0) {
+        return '(none)';
+    }
+
+    const labels = value
+        .map((entry) => {
+            if (typeof entry === 'string' && entry.trim().length > 0) {
+                return entry.trim();
+            }
+
+            const record = asRecord(entry);
+            return asString(
+                record?.name
+                ?? record?.uriTemplate
+                ?? record?.uri
+                ?? record?.title
+                ?? record?.id
+            );
+        })
+        .filter((entry): entry is string => Boolean(entry));
+
+    if (labels.length > 0) {
+        return labels.join(', ');
+    }
+
+    return `${value.length} item${value.length === 1 ? '' : 's'}`;
+}
+
+function parseMcpServerConfigs(configResult: unknown): Record<string, McpServerConfigEntry> {
+    const root = asRecord(configResult);
+    const config = asRecord(root?.config ?? configResult);
+    const mcpServers = asRecord(config?.mcp_servers ?? config?.mcpServers);
+    const results: Record<string, McpServerConfigEntry> = {};
+
+    if (!mcpServers) {
+        return results;
+    }
+
+    for (const [name, rawEntry] of Object.entries(mcpServers)) {
+        const entry = asRecord(rawEntry);
+        results[name] = {
+            command: asString(entry?.command),
+            args: asStringArray(entry?.args),
+            enabled: asBoolean(entry?.enabled)
+        };
+    }
+
+    return results;
+}
+
+function formatMcpStatusMessage(args: {
+    config: unknown;
+    statuses: McpServerStatusEntry[];
+}): string {
+    const configEntries = parseMcpServerConfigs(args.config);
+    const statusEntries = new Map<string, Record<string, unknown>>();
+
+    for (const statusEntry of args.statuses) {
+        const statusRecord = asRecord(statusEntry);
+        if (!statusRecord) {
+            continue;
+        }
+        const name = asString(statusRecord?.name);
+        if (!name) {
+            continue;
+        }
+        statusEntries.set(name, statusRecord);
+    }
+
+    const names = Array.from(new Set([
+        ...Object.keys(configEntries),
+        ...statusEntries.keys()
+    ])).sort((left, right) => left.localeCompare(right));
+
+    const body: string[] = [];
+    if (names.length === 0) {
+        body.push('No MCP servers configured.');
+    }
+
+    for (const name of names) {
+        const configEntry = configEntries[name];
+        const statusEntry = statusEntries.get(name) ?? null;
+        const statusLabel = configEntry?.enabled === false
+            ? 'disabled'
+            : (configEntry?.enabled === true || statusEntry)
+                ? 'enabled'
+                : 'unknown';
+        const authLabel = statusEntry
+            ? formatAuthStatus(asString(statusEntry.authStatus))
+            : 'Unavailable';
+        const toolNames = statusEntry
+            ? Object.keys(asRecord(statusEntry.tools) ?? {}).sort().join(', ') || '(none)'
+            : '(unavailable)';
+
+        body.push(`• ${name}`);
+        body.push(`  • Status: ${statusLabel}`);
+        body.push(`  • Auth: ${authLabel}`);
+        body.push(`  • Command: ${formatCommand(configEntry?.command ?? null, configEntry?.args ?? [])}`);
+        body.push(`  • Tools: ${toolNames}`);
+        body.push(`  • Resources: ${formatNamedCollection(statusEntry?.resources, { unavailable: !statusEntry })}`);
+        body.push(`  • Resource templates: ${formatNamedCollection(statusEntry?.resourceTemplates, { unavailable: !statusEntry })}`);
+        body.push('');
+    }
+
+    while (body.length > 0 && body[body.length - 1] === '') {
+        body.pop();
+    }
+
+    return [
+        '🔌  MCP Tools',
+        '',
+        '```text',
+        ...body,
+        '```'
+    ].join('\n');
+}
+
+function truncateText(value: string, maxLength: number): string {
+    if (value.length <= maxLength) {
+        return value;
+    }
+
+    if (maxLength <= 3) {
+        return value.slice(0, maxLength);
+    }
+
+    return `${value.slice(0, maxLength - 3)}...`;
+}
+
+function formatSkillLabel(skill: Record<string, unknown>): string {
+    const interfaceInfo = asRecord(skill.interface);
+    return asString(interfaceInfo?.displayName)
+        ?? asString(skill.name)
+        ?? 'Unnamed Skill';
+}
+
+function formatSkillDescription(skill: Record<string, unknown>): string {
+    const interfaceInfo = asRecord(skill.interface);
+    const description = asString(interfaceInfo?.shortDescription)
+        ?? asString(skill.shortDescription)
+        ?? asString(skill.description)
+        ?? 'No description';
+
+    return truncateText(description, 100);
+}
+
+function getSkillScopePriority(scope: string | null): number {
+    switch ((scope ?? '').toLowerCase()) {
+        case 'system':
+            return 0;
+        case 'project':
+            return 1;
+        case 'user':
+            return 2;
+        default:
+            return 3;
+    }
+}
+
+function formatSkillsMessage(skills: SkillListEntry[]): string {
+    const items = skills
+        .map((skill) => asRecord(skill))
+        .filter((skill): skill is Record<string, unknown> => Boolean(skill))
+        .sort((left, right) => {
+            const scopeOrder = getSkillScopePriority(asString(left.scope)) - getSkillScopePriority(asString(right.scope));
+            if (scopeOrder !== 0) {
+                return scopeOrder;
+            }
+
+            return formatSkillLabel(left).localeCompare(formatSkillLabel(right), undefined, { sensitivity: 'base' });
+        });
+
+    if (items.length === 0) {
+        return [
+            'Skills',
+            '',
+            'No skills available.'
+        ].join('\n');
+    }
+
+    const labelWidth = Math.min(
+        Math.max(...items.map((skill) => formatSkillLabel(skill).length)),
+        22
+    );
+
+    const lines = items.map((skill) => {
+        const label = formatSkillLabel(skill);
+        const description = formatSkillDescription(skill);
+        const enabled = asBoolean(skill.enabled);
+        const suffix = enabled === false ? ' (disabled)' : '';
+        return `${truncateText(label, labelWidth).padEnd(labelWidth)}  [Skill] ${description}${suffix}`;
+    });
+
+    return [
+        'Skills',
+        '',
+        '```text',
+        ...lines,
+        '```'
+    ].join('\n');
 }
 
 export function parseReviewTarget(rawTail: string): ReviewTarget | null {
@@ -295,6 +600,44 @@ export async function executeCodexSlashCommand(args: ExecuteCodexSlashCommandArg
     const runtimeProvider = runtimeSession.getSlashCommandRuntimeProvider();
     if (!runtimeProvider) {
         return buildUnsupported(`/${command.name} is not available before the remote Codex runtime is ready`);
+    }
+
+    if (command.name === 'mcp') {
+        try {
+            const result = await runtimeProvider.listMcpServers();
+            output.sendAgentMessage({
+                type: 'message',
+                message: formatMcpStatusMessage(result),
+                id: randomUUID()
+            });
+            return buildHandledResult(command.name, true);
+        } catch (error) {
+            output.sendAgentMessage({
+                type: 'message',
+                message: `/mcp failed: ${getErrorMessage(error, 'Unable to load MCP server status')}`,
+                id: randomUUID()
+            });
+            return buildHandledResult(command.name, true);
+        }
+    }
+
+    if (command.name === 'skills') {
+        try {
+            const skills = await runtimeProvider.listSkills();
+            output.sendAgentMessage({
+                type: 'message',
+                message: formatSkillsMessage(skills),
+                id: randomUUID()
+            });
+            return buildHandledResult(command.name, true);
+        } catch (error) {
+            output.sendAgentMessage({
+                type: 'message',
+                message: `/skills failed: ${getErrorMessage(error, 'Unable to load skills')}`,
+                id: randomUUID()
+            });
+            return buildHandledResult(command.name, true);
+        }
     }
 
     if (command.name === 'compact') {

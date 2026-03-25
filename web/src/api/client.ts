@@ -23,6 +23,7 @@ import type {
     SessionResponse,
     SessionsResponse
 } from '@/types/api'
+import type { SpawnPermissionMode } from '@/components/NewSession/types'
 
 type ApiClientOptions = {
     baseUrl?: string
@@ -381,19 +382,30 @@ export class ApiClient {
         )
     }
 
+    async listMachineDirectory(machineId: string, path?: string): Promise<ListDirectoryResponse> {
+        const params = new URLSearchParams()
+        if (path) {
+            params.set('path', path)
+        }
+        const qs = params.toString()
+        return await this.request<ListDirectoryResponse>(
+            `/api/machines/${encodeURIComponent(machineId)}/directory${qs ? `?${qs}` : ''}`
+        )
+    }
+
     async spawnSession(
         machineId: string,
         directory: string,
         agent?: 'codex',
         model?: string,
         modelReasoningEffort?: string,
-        yolo?: boolean,
+        permissionMode?: SpawnPermissionMode,
         sessionType?: 'simple' | 'worktree',
         worktreeName?: string
     ): Promise<SpawnResponse> {
         return await this.request<SpawnResponse>(`/api/machines/${encodeURIComponent(machineId)}/spawn`, {
             method: 'POST',
-            body: JSON.stringify({ directory, agent, model, modelReasoningEffort, yolo, sessionType, worktreeName })
+            body: JSON.stringify({ directory, agent, model, modelReasoningEffort, permissionMode, sessionType, worktreeName })
         })
     }
 

@@ -1,6 +1,7 @@
 export type AgentType = 'codex'
 export type SessionType = 'simple' | 'worktree'
 export type CodexReasoningEffort = 'default' | 'low' | 'medium' | 'high' | 'xhigh'
+export type SpawnPermissionMode = 'default' | 'safe-yolo' | 'yolo'
 
 export const MODEL_OPTIONS: Record<AgentType, { value: string; label: string }[]> = {
     codex: [

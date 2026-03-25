@@ -387,6 +387,15 @@ export class ApiSessionClient extends EventEmitter {
         type: 'status'
         snapshot: CodexStatusSnapshot
     } | {
+        type: 'usage-updated'
+        inputTokens: number
+        outputTokens: number
+        cacheCreation: number
+        cacheRead: number
+        contextSize: number
+        contextWindow: number | null
+        contextLeftPercent: number | null
+    } | {
         type: 'ready'
     }, id?: string): void {
         const content = {

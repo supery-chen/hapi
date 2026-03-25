@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { posix as pathPosix } from 'node:path'
 import type { SyncEngine } from '../../sync/syncEngine'
 import type { WebAppEnv } from '../middleware/auth'
 import { requireSessionFromParam, requireSyncEngine } from './guards'
@@ -21,6 +22,18 @@ function parseBooleanParam(value: string | undefined): boolean | undefined {
     if (value === 'true') return true
     if (value === 'false') return false
     return undefined
+}
+
+function toFileSearchItem(fullPath: string, fileType: 'file' | 'folder') {
+    const normalizedPath = fullPath.replace(/\/+$/, '')
+    const fileName = pathPosix.basename(normalizedPath) || normalizedPath
+    const filePath = pathPosix.dirname(normalizedPath)
+    return {
+        fileName,
+        filePath: filePath === '.' ? '' : filePath,
+        fullPath: normalizedPath,
+        fileType
+    }
 }
 
 async function runRpc<T>(fn: () => Promise<T>): Promise<T | { success: false; error: string }> {
@@ -164,22 +177,27 @@ export function createGitRoutes(getSyncEngine: () => SyncEngine | null): Hono<We
         }
 
         const stdout = result.stdout ?? ''
-        const files = stdout
+        const matchedFiles = stdout
             .split('\n')
             .map((line) => line.trim())
             .filter((line) => line.length > 0)
-            .slice(0, limit)
-            .map((fullPath) => {
-                const parts = fullPath.split('/')
-                const fileName = parts[parts.length - 1] || fullPath
-                const filePath = parts.slice(0, -1).join('/')
-                return {
-                    fileName,
-                    filePath,
-                    fullPath,
-                    fileType: 'file' as const
-                }
-            })
+
+        const directories = new Set<string>()
+        for (const filePath of matchedFiles) {
+            const parts = filePath.split('/').filter(Boolean)
+            if (parts.length <= 1) continue
+
+            let current = ''
+            for (let i = 0; i < parts.length - 1; i += 1) {
+                current = current ? `${current}/${parts[i]}` : parts[i]!
+                directories.add(current)
+            }
+        }
+
+        const files = [
+            ...Array.from(directories).map((fullPath) => toFileSearchItem(fullPath, 'folder')),
+            ...matchedFiles.map((fullPath) => toFileSearchItem(fullPath, 'file'))
+        ].slice(0, limit)
 
         return c.json({ success: true, files })
     })

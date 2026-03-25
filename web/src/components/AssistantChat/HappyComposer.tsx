@@ -216,11 +216,8 @@ export function HappyComposer(props: {
             return
         }
 
-        // Shift+Enter sends the message (works on all platforms including iPadOS with keyboard)
-        if (key === 'Enter' && e.shiftKey) {
-            e.preventDefault()
-            if (!canSend) return
-            api.composer().send()
+        const enterWithModifier = key === 'Enter' && (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey)
+        if (enterWithModifier) {
             return
         }
 
@@ -235,7 +232,7 @@ export function HappyComposer(props: {
                 moveDown()
                 return
             }
-            if ((key === 'Enter' || key === 'Tab') && !e.shiftKey) {
+            if ((key === 'Enter' || key === 'Tab') && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
                 e.preventDefault()
                 const indexToSelect = selectedIndex >= 0 ? selectedIndex : 0
                 handleSuggestionSelect(indexToSelect)
@@ -246,6 +243,13 @@ export function HappyComposer(props: {
                 clearSuggestions()
                 return
             }
+        }
+
+        if (key === 'Enter') {
+            e.preventDefault()
+            if (!canSend) return
+            api.composer().send()
+            return
         }
 
         if (key === 'Escape' && threadIsRunning) {
@@ -562,7 +566,7 @@ export function HappyComposer(props: {
                                 placeholder={t('misc.typeAMessage')}
                                 disabled={controlsDisabled}
                                 maxRows={5}
-                                submitOnEnter={!isTouch}
+                                submitOnEnter={false}
                                 cancelOnEscape={false}
                                 onChange={handleChange}
                                 onSelect={handleSelect}

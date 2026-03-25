@@ -7,17 +7,24 @@ import { useSpawnSession } from '@/hooks/mutations/useSpawnSession'
 import { useSessions } from '@/hooks/queries/useSessions'
 import { useActiveSuggestions, type Suggestion } from '@/hooks/useActiveSuggestions'
 import { useDirectorySuggestions } from '@/hooks/useDirectorySuggestions'
+import { useMachineDirectoryAutocomplete } from '@/hooks/useMachineDirectoryAutocomplete'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { useTranslation } from '@/lib/use-translation'
-import type { CodexReasoningEffort, SessionType } from './types'
+import type { CodexReasoningEffort, SessionType, SpawnPermissionMode } from './types'
 import { ActionButtons } from './ActionButtons'
 import { DirectorySection } from './DirectorySection'
 import { MachineSelector } from './MachineSelector'
 import { ModelSelector } from './ModelSelector'
 import { ReasoningEffortSelector } from './ReasoningEffortSelector'
 import {
-    loadPreferredYoloMode,
-    savePreferredYoloMode,
+    loadPreferredModel,
+    loadPreferredReasoningEffort,
+    loadPreferredSpawnPermissionMode,
+    loadPreferredSessionType,
+    savePreferredModel,
+    savePreferredReasoningEffort,
+    savePreferredSpawnPermissionMode,
+    savePreferredSessionType,
 } from './preferences'
 import { SessionTypeSelector } from './SessionTypeSelector'
 import { YoloToggle } from './YoloToggle'
@@ -41,10 +48,10 @@ export function NewSession(props: {
     const [directory, setDirectory] = useState('')
     const [suppressSuggestions, setSuppressSuggestions] = useState(false)
     const [isDirectoryFocused, setIsDirectoryFocused] = useState(false)
-    const [model, setModel] = useState('auto')
-    const [modelReasoningEffort, setModelReasoningEffort] = useState<CodexReasoningEffort>('default')
-    const [yoloMode, setYoloMode] = useState(loadPreferredYoloMode)
-    const [sessionType, setSessionType] = useState<SessionType>('simple')
+    const [model, setModel] = useState(loadPreferredModel)
+    const [modelReasoningEffort, setModelReasoningEffort] = useState<CodexReasoningEffort>(loadPreferredReasoningEffort)
+    const [permissionMode, setPermissionMode] = useState<SpawnPermissionMode>(loadPreferredSpawnPermissionMode)
+    const [sessionType, setSessionType] = useState<SessionType>(loadPreferredSessionType)
     const [worktreeName, setWorktreeName] = useState('')
     const [directoryCreationConfirmed, setDirectoryCreationConfirmed] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -57,8 +64,20 @@ export function NewSession(props: {
     }, [sessionType])
 
     useEffect(() => {
-        savePreferredYoloMode(yoloMode)
-    }, [yoloMode])
+        savePreferredSpawnPermissionMode(permissionMode)
+    }, [permissionMode])
+
+    useEffect(() => {
+        savePreferredModel(model)
+    }, [model])
+
+    useEffect(() => {
+        savePreferredReasoningEffort(modelReasoningEffort)
+    }, [modelReasoningEffort])
+
+    useEffect(() => {
+        savePreferredSessionType(sessionType)
+    }, [sessionType])
 
     useEffect(() => {
         if (props.machines.length === 0) return
@@ -93,6 +112,7 @@ export function NewSession(props: {
     const trimmedDirectory = directory.trim()
     const deferredDirectory = useDeferredValue(trimmedDirectory)
     const allPaths = useDirectorySuggestions(machineId, sessions, recentPaths)
+    const { getSuggestions: getMachineDirectorySuggestions } = useMachineDirectoryAutocomplete(props.api, machineId)
 
     const pathsToCheck = useMemo(
         () => Array.from(new Set([
@@ -131,16 +151,8 @@ export function NewSession(props: {
     }, [machineId, sessionType, trimmedDirectory])
 
     const getSuggestions = useCallback(async (query: string): Promise<Suggestion[]> => {
-        const lowered = query.toLowerCase()
-        return verifiedPaths
-            .filter((path) => path.toLowerCase().includes(lowered))
-            .slice(0, 8)
-            .map((path) => ({
-                key: path,
-                text: path,
-                label: path
-            }))
-    }, [verifiedPaths])
+        return await getMachineDirectorySuggestions(query, verifiedPaths)
+    }, [getMachineDirectorySuggestions, verifiedPaths])
 
     const activeQuery = (!isDirectoryFocused || suppressSuggestions) ? null : directory
 
@@ -240,7 +252,7 @@ export function NewSession(props: {
                 directory: trimmedDirectory,
                 model: resolvedModel,
                 modelReasoningEffort: resolvedModelReasoningEffort,
-                yolo: yoloMode,
+                permissionMode,
                 sessionType,
                 worktreeName: sessionType === 'worktree' ? (worktreeName.trim() || undefined) : undefined
             })
@@ -311,9 +323,9 @@ export function NewSession(props: {
                 onChange={setModelReasoningEffort}
             />
             <YoloToggle
-                yoloMode={yoloMode}
+                permissionMode={permissionMode}
                 isDisabled={isFormDisabled}
-                onToggle={setYoloMode}
+                onChange={setPermissionMode}
             />
 
             {(error ?? spawnError) ? (

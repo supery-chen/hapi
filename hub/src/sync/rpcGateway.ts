@@ -49,6 +49,12 @@ export type RpcPathExistsResponse = {
     exists: Record<string, boolean>
 }
 
+export type RpcMachineListDirectoryResponse = {
+    success: boolean
+    entries?: RpcDirectoryEntry[]
+    error?: string
+}
+
 export class RpcGateway {
     constructor(
         private readonly io: Server,
@@ -111,7 +117,7 @@ export class RpcGateway {
         agent: 'codex' = 'codex',
         model?: string,
         modelReasoningEffort?: string,
-        yolo?: boolean,
+        permissionMode?: PermissionMode,
         sessionType?: 'simple' | 'worktree',
         worktreeName?: string,
         resumeSessionId?: string
@@ -120,7 +126,7 @@ export class RpcGateway {
             const result = await this.machineRpc(
                 machineId,
                 'spawn-happy-session',
-                { type: 'spawn-in-directory', directory, agent, model, modelReasoningEffort, yolo, sessionType, worktreeName, resumeSessionId }
+                { type: 'spawn-in-directory', directory, agent, model, modelReasoningEffort, permissionMode, sessionType, worktreeName, resumeSessionId }
             )
             if (result && typeof result === 'object') {
                 const obj = result as Record<string, unknown>
@@ -171,6 +177,10 @@ export class RpcGateway {
             exists[key] = value === true
         }
         return exists
+    }
+
+    async listMachineDirectory(machineId: string, path?: string): Promise<RpcMachineListDirectoryResponse> {
+        return await this.machineRpc(machineId, 'list-directory', { path }) as RpcMachineListDirectoryResponse
     }
 
     async getGitStatus(sessionId: string, cwd?: string): Promise<RpcCommandResponse> {

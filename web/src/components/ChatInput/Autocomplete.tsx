@@ -31,29 +31,39 @@ export const Autocomplete = memo(function Autocomplete(props: AutocompleteProps)
     return (
         <div className="py-1" ref={listRef}>
             {suggestions.map((suggestion, index) => (
-                <button
-                    key={suggestion.key}
-                    type="button"
-                    data-suggestion-index={index}
-                    className={`flex w-full cursor-pointer flex-col items-start gap-0.5 px-3 py-2 text-left text-sm transition-colors ${
-                        index === selectedIndex
-                            ? 'bg-[var(--app-button)] text-[var(--app-button-text)]'
-                            : 'text-[var(--app-fg)] hover:bg-[var(--app-secondary-bg)]'
-                    }`}
-                    onClick={() => onSelect(index)}
-                    onMouseDown={(e) => e.preventDefault()} // Prevent blur on textarea
-                >
-                    <span className="w-full font-medium">{suggestion.label}</span>
-                    {suggestion.description && (
-                        <span className={`w-full min-h-[2.25rem] text-xs leading-snug line-clamp-2 ${
-                            index === selectedIndex
-                                ? 'opacity-80'
-                                : 'text-[var(--app-hint)]'
-                        }`}>
-                            {suggestion.description}
-                        </span>
-                    )}
-                </button>
+                (() => {
+                    const isSelected = index === selectedIndex
+                    const isFileSuggestion = suggestion.text.startsWith('@')
+                    const colorClass = isSelected
+                        ? 'bg-[var(--app-button)] text-[var(--app-button-text)]'
+                        : 'text-[var(--app-fg)] hover:bg-[var(--app-secondary-bg)]'
+
+                    return (
+                        <button
+                            key={suggestion.key}
+                            type="button"
+                            data-suggestion-index={index}
+                            className={`flex w-full cursor-pointer text-left text-sm transition-colors ${colorClass} ${
+                                isFileSuggestion
+                                    ? 'items-center px-3 py-1.5'
+                                    : 'flex-col items-start gap-0.5 px-3 py-2'
+                            }`}
+                            onClick={() => onSelect(index)}
+                            onMouseDown={(e) => e.preventDefault()} // Prevent blur on textarea
+                        >
+                            <span className={`w-full font-medium ${isFileSuggestion ? 'truncate' : ''}`}>{suggestion.label}</span>
+                            {!isFileSuggestion && suggestion.description ? (
+                                <span className={`w-full min-h-[2.25rem] text-xs leading-snug line-clamp-2 ${
+                                    isSelected
+                                        ? 'opacity-80'
+                                        : 'text-[var(--app-hint)]'
+                                }`}>
+                                    {suggestion.description}
+                                </span>
+                            ) : null}
+                        </button>
+                    )
+                })()
             ))}
         </div>
     )

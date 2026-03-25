@@ -2,6 +2,7 @@ import React from 'react';
 import { randomUUID } from 'node:crypto';
 
 import { CodexAppServerClient } from './codexAppServerClient';
+import type { McpServerStatusEntry, SkillListEntry } from './appServerTypes';
 import { CodexPermissionHandler } from './utils/permissionHandler';
 import { ReasoningProcessor } from './utils/reasoningProcessor';
 import { DiffProcessor } from './utils/diffProcessor';
@@ -17,6 +18,7 @@ import { registerAppServerPermissionHandlers } from './utils/appServerPermission
 import { buildThreadStartParams, buildTurnStartParams } from './utils/appServerConfig';
 import { buildCodexStatusSnapshot } from './utils/statusSnapshot';
 import { shouldIgnoreTerminalEvent } from './utils/terminalEventGuard';
+import { extractCodexUsageSummary } from './utils/statusSummary';
 import {
     RemoteLauncherBase,
     type RemoteLauncherDisplayContext,
@@ -398,7 +400,21 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                 }
             }
             if (msgType === 'token_count') {
-                session.setLatestTokenUsage?.(asRecord(msg.info) ?? null);
+                const tokenUsage = asRecord(msg.info) ?? null;
+                session.setLatestTokenUsage?.(tokenUsage);
+                const usageSummary = extractCodexUsageSummary(tokenUsage);
+                if (usageSummary) {
+                    session.sendSessionEvent({
+                        type: 'usage-updated',
+                        inputTokens: usageSummary.inputTokens,
+                        outputTokens: usageSummary.outputTokens,
+                        cacheCreation: 0,
+                        cacheRead: usageSummary.cachedInputTokens,
+                        contextSize: usageSummary.contextUsedTokens,
+                        contextWindow: usageSummary.modelContextWindow,
+                        contextLeftPercent: usageSummary.contextLeftPercent
+                    });
+                }
             }
             if (msgType === 'patch_apply_begin') {
                 const callId = asString(msg.call_id ?? msg.callId);
@@ -620,6 +636,44 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
                     threadId: this.currentThreadId,
                     numTurns
                 });
+            },
+            listMcpServers: async () => {
+                const config = await appServerClient.readConfig();
+                const statuses: McpServerStatusEntry[] = [];
+                let cursor: string | null = null;
+
+                do {
+                    const page = await appServerClient.listMcpServerStatuses({
+                        cursor,
+                        limit: 100
+                    });
+                    if (Array.isArray(page.data)) {
+                        statuses.push(...page.data);
+                    }
+
+                    const nextCursor = typeof page.nextCursor === 'string' && page.nextCursor.trim().length > 0
+                        ? page.nextCursor
+                        : null;
+                    cursor = nextCursor;
+                } while (cursor);
+
+                return {
+                    config,
+                    statuses
+                };
+            },
+            listSkills: async () => {
+                const response = await appServerClient.listSkills({
+                    cwds: [session.path]
+                });
+
+                const scopedEntry = Array.isArray(response.data)
+                    ? response.data.find((entry) => entry.cwd === session.path) ?? response.data[0]
+                    : null;
+
+                return Array.isArray(scopedEntry?.skills)
+                    ? scopedEntry.skills.filter((skill): skill is SkillListEntry => Boolean(skill && typeof skill === 'object'))
+                    : [];
             }
         });
 

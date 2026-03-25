@@ -1,3 +1,5 @@
+import type { CodexPermissionMode } from '@hapi/protocol/types'
+
 export interface SpawnSessionOptions {
     machineId?: string
     directory: string
@@ -8,6 +10,7 @@ export interface SpawnSessionOptions {
     model?: string
     modelReasoningEffort?: string
     yolo?: boolean
+    permissionMode?: CodexPermissionMode
     token?: string
     sessionType?: 'simple' | 'worktree'
     worktreeName?: string

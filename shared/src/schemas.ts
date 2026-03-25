@@ -25,6 +25,7 @@ export const MetadataSchema = z.object({
     version: z.string().optional(),
     name: z.string().optional(),
     os: z.string().optional(),
+    modelReasoningEffort: z.string().optional(),
     summary: MetadataSummarySchema.optional(),
     machineId: z.string().optional(),
     codexSessionId: z.string().optional(),

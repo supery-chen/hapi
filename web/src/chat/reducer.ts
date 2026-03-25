@@ -16,6 +16,8 @@ export type LatestUsage = {
     cacheCreation: number
     cacheRead: number
     contextSize: number
+    contextWindow: number | null
+    contextLeftPercent: number | null
     timestamp: number
 }
 
@@ -94,6 +96,37 @@ export function reduceChatBlocks(
     let latestUsage: LatestUsage | null = null
     for (let i = normalized.length - 1; i >= 0; i--) {
         const msg = normalized[i]
+        if (msg.role === 'event' && msg.content.type === 'usage-updated') {
+            const inputTokens = typeof msg.content.inputTokens === 'number' ? msg.content.inputTokens : null
+            const outputTokens = typeof msg.content.outputTokens === 'number' ? msg.content.outputTokens : null
+            const cacheCreation = typeof msg.content.cacheCreation === 'number' ? msg.content.cacheCreation : null
+            const cacheRead = typeof msg.content.cacheRead === 'number' ? msg.content.cacheRead : null
+            const contextSize = typeof msg.content.contextSize === 'number' ? msg.content.contextSize : null
+            const contextWindow = typeof msg.content.contextWindow === 'number' ? msg.content.contextWindow : null
+            const contextLeftPercent = typeof msg.content.contextLeftPercent === 'number' ? msg.content.contextLeftPercent : null
+
+            if (
+                inputTokens === null
+                || outputTokens === null
+                || cacheCreation === null
+                || cacheRead === null
+                || contextSize === null
+            ) {
+                continue
+            }
+
+            latestUsage = {
+                inputTokens,
+                outputTokens,
+                cacheCreation,
+                cacheRead,
+                contextSize,
+                contextWindow,
+                contextLeftPercent,
+                timestamp: msg.createdAt
+            }
+            break
+        }
         if (msg.usage) {
             latestUsage = {
                 inputTokens: msg.usage.input_tokens,
@@ -101,6 +134,8 @@ export function reduceChatBlocks(
                 cacheCreation: msg.usage.cache_creation_input_tokens ?? 0,
                 cacheRead: msg.usage.cache_read_input_tokens ?? 0,
                 contextSize: calculateContextSize(msg.usage),
+                contextWindow: null,
+                contextLeftPercent: null,
                 timestamp: msg.createdAt
             }
             break

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ApiClient } from '@/api/client'
 import type { SpawnResponse } from '@/types/api'
 import { queryKeys } from '@/lib/query-keys'
+import type { SpawnPermissionMode } from '@/components/NewSession/types'
 
 type SpawnInput = {
     machineId: string
@@ -9,7 +10,7 @@ type SpawnInput = {
     agent?: 'codex'
     model?: string
     modelReasoningEffort?: string
-    yolo?: boolean
+    permissionMode?: SpawnPermissionMode
     sessionType?: 'simple' | 'worktree'
     worktreeName?: string
 }
@@ -32,7 +33,7 @@ export function useSpawnSession(api: ApiClient | null): {
                 input.agent,
                 input.model,
                 input.modelReasoningEffort,
-                input.yolo,
+                input.permissionMode,
                 input.sessionType,
                 input.worktreeName
             )

@@ -25,6 +25,7 @@ import {
     RpcGateway,
     type RpcCommandResponse,
     type RpcDeleteUploadResponse,
+    type RpcMachineListDirectoryResponse,
     type RpcListDirectoryResponse,
     type RpcPathExistsResponse,
     type RpcReadFileResponse,
@@ -38,6 +39,7 @@ export type { SyncEventListener } from './eventPublisher'
 export type {
     RpcCommandResponse,
     RpcDeleteUploadResponse,
+    RpcMachineListDirectoryResponse,
     RpcListDirectoryResponse,
     RpcPathExistsResponse,
     RpcReadFileResponse,
@@ -364,12 +366,12 @@ export class SyncEngine {
         agent: 'codex' = 'codex',
         model?: string,
         modelReasoningEffort?: string,
-        yolo?: boolean,
+        permissionMode?: PermissionMode,
         sessionType?: 'simple' | 'worktree',
         worktreeName?: string,
         resumeSessionId?: string
     ): Promise<{ type: 'success'; sessionId: string } | { type: 'error'; message: string }> {
-        return await this.rpcGateway.spawnSession(machineId, directory, agent, model, modelReasoningEffort, yolo, sessionType, worktreeName, resumeSessionId)
+        return await this.rpcGateway.spawnSession(machineId, directory, agent, model, modelReasoningEffort, permissionMode, sessionType, worktreeName, resumeSessionId)
     }
 
     async resumeSession(sessionId: string, namespace: string): Promise<ResumeSessionResult> {
@@ -393,11 +395,13 @@ export class SyncEngine {
         }
 
         const flavor = 'codex'
-        const resumeToken = metadata.codexSessionId
-
-        if (!resumeToken) {
-            return { type: 'error', message: 'Resume session ID unavailable', code: 'resume_unavailable' }
-        }
+        const metadataRecord = metadata as Record<string, unknown>
+        const resumeToken = typeof metadataRecord.codexSessionId === 'string' && metadataRecord.codexSessionId.trim().length > 0
+            ? metadataRecord.codexSessionId
+            : undefined
+        const modelReasoningEffort = typeof metadataRecord.modelReasoningEffort === 'string' && metadataRecord.modelReasoningEffort.trim().length > 0
+            ? metadataRecord.modelReasoningEffort
+            : undefined
 
         const onlineMachines = this.machineCache.getOnlineMachinesByNamespace(namespace)
         if (onlineMachines.length === 0) {
@@ -425,7 +429,8 @@ export class SyncEngine {
             metadata.path,
             flavor,
             session.model ?? undefined,
-            undefined,
+            modelReasoningEffort,
+            session.permissionMode,
             undefined,
             undefined,
             resumeToken
@@ -438,6 +443,17 @@ export class SyncEngine {
         const becameActive = await this.waitForSessionActive(spawnResult.sessionId)
         if (!becameActive) {
             return { type: 'error', message: 'Session failed to become active', code: 'resume_failed' }
+        }
+
+        if (session.collaborationMode !== undefined) {
+            try {
+                await this.applySessionConfig(spawnResult.sessionId, {
+                    collaborationMode: session.collaborationMode
+                })
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Failed to restore collaboration mode'
+                return { type: 'error', message, code: 'resume_failed' }
+            }
         }
 
         if (spawnResult.sessionId !== access.sessionId) {
@@ -466,6 +482,10 @@ export class SyncEngine {
 
     async checkPathsExist(machineId: string, paths: string[]): Promise<Record<string, boolean>> {
         return await this.rpcGateway.checkPathsExist(machineId, paths)
+    }
+
+    async listMachineDirectory(machineId: string, path?: string): Promise<RpcMachineListDirectoryResponse> {
+        return await this.rpcGateway.listMachineDirectory(machineId, path)
     }
 
     async getGitStatus(sessionId: string, cwd?: string): Promise<RpcCommandResponse> {

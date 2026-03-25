@@ -15,6 +15,40 @@ export function hashRunnerCliApiToken(token: string | null | undefined): string 
     return createHash('sha256').update(trimmed).digest('hex')
 }
 
+function normalizeLoopbackHost(host: string): string {
+    const normalized = host.trim().toLowerCase()
+    if (
+        normalized === 'localhost'
+        || normalized === '127.0.0.1'
+        || normalized === '0.0.0.0'
+        || normalized === '::1'
+        || normalized === '[::1]'
+        || normalized === '::'
+        || normalized === '[::]'
+    ) {
+        return '127.0.0.1'
+    }
+    return normalized
+}
+
+export function normalizeRunnerApiUrl(raw: string | null | undefined): string | undefined {
+    const trimmed = raw?.trim()
+    if (!trimmed) {
+        return undefined
+    }
+
+    try {
+        const url = new URL(trimmed)
+        const protocol = url.protocol.toLowerCase()
+        const hostname = normalizeLoopbackHost(url.hostname)
+        const port = url.port
+        const pathname = url.pathname === '/' ? '' : url.pathname.replace(/\/+$/, '')
+        return `${protocol}//${hostname}${port ? `:${port}` : ''}${pathname}`
+    } catch {
+        return trimmed.replace(/\/+$/, '')
+    }
+}
+
 export function isRunnerStateCompatibleWithIdentity(
     state: Pick<
         RunnerLocallyPersistedState,
@@ -22,7 +56,10 @@ export function isRunnerStateCompatibleWithIdentity(
     >,
     current: RunnerConnectionIdentity
 ): boolean {
-    if (!state.startedWithApiUrl || state.startedWithApiUrl !== current.apiUrl) {
+    const normalizedStartedWithApiUrl = normalizeRunnerApiUrl(state.startedWithApiUrl)
+    const normalizedCurrentApiUrl = normalizeRunnerApiUrl(current.apiUrl)
+
+    if (!normalizedStartedWithApiUrl || !normalizedCurrentApiUrl || normalizedStartedWithApiUrl !== normalizedCurrentApiUrl) {
         return false
     }
 

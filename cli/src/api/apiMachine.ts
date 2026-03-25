@@ -3,7 +3,8 @@
  */
 
 import { io, type Socket } from 'socket.io-client'
-import { stat } from 'node:fs/promises'
+import { readdir, stat } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { logger } from '@/ui/logger'
 import { configuration } from '@/configuration'
 import type { Update, UpdateMachineBody } from '@hapi/protocol'
@@ -64,6 +65,21 @@ interface PathExistsResponse {
     exists: Record<string, boolean>
 }
 
+interface ListDirectoryRequest {
+    path?: string
+}
+
+interface ListDirectoryResponse {
+    success: boolean
+    entries?: Array<{
+        name: string
+        type: 'file' | 'directory' | 'other'
+        size?: number
+        modified?: number
+    }>
+    error?: string
+}
+
 export class ApiMachineClient {
     private socket!: Socket<ServerToRunnerEvents, RunnerToServerEvents>
     private keepAliveInterval: NodeJS.Timeout | null = null
@@ -98,11 +114,65 @@ export class ApiMachineClient {
 
             return { exists }
         })
+
+        this.rpcHandlerManager.registerHandler<ListDirectoryRequest, ListDirectoryResponse>('list-directory', async (params) => {
+            const rawPath = typeof params?.path === 'string' ? params.path.trim() : ''
+            const targetPath = rawPath ? resolve(rawPath) : resolve(process.env.HOME ?? process.env.USERPROFILE ?? '.')
+
+            try {
+                const entries = await readdir(targetPath, { withFileTypes: true })
+
+                const directoryEntries = await Promise.all(
+                    entries.map(async (entry) => {
+                        const fullPath = resolve(targetPath, entry.name)
+                        let type: 'file' | 'directory' | 'other' = 'other'
+                        let size: number | undefined
+                        let modified: number | undefined
+
+                        if (entry.isDirectory()) {
+                            type = 'directory'
+                        } else if (entry.isFile()) {
+                            type = 'file'
+                        }
+
+                        try {
+                            const stats = await stat(fullPath)
+                            size = stats.size
+                            modified = stats.mtime.getTime()
+                        } catch {
+                        }
+
+                        return {
+                            name: entry.name,
+                            type,
+                            size,
+                            modified
+                        }
+                    })
+                )
+
+                directoryEntries.sort((a, b) => {
+                    if (a.type === 'directory' && b.type !== 'directory') return -1
+                    if (a.type !== 'directory' && b.type === 'directory') return 1
+                    return a.name.localeCompare(b.name)
+                })
+
+                return {
+                    success: true,
+                    entries: directoryEntries
+                }
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error)
+                }
+            }
+        })
     }
 
     setRPCHandlers({ spawnSession, stopSession, requestShutdown }: MachineRpcHandlers): void {
         this.rpcHandlerManager.registerHandler('spawn-happy-session', async (params: any) => {
-            const { directory, sessionId, resumeSessionId, machineId, approvedNewDirectoryCreation, agent, model, modelReasoningEffort, yolo, token, sessionType, worktreeName } = params || {}
+            const { directory, sessionId, resumeSessionId, machineId, approvedNewDirectoryCreation, agent, model, modelReasoningEffort, yolo, permissionMode, token, sessionType, worktreeName } = params || {}
 
             if (!directory) {
                 throw new Error('Directory is required')
@@ -118,6 +188,7 @@ export class ApiMachineClient {
                 model,
                 modelReasoningEffort,
                 yolo,
+                permissionMode,
                 token,
                 sessionType,
                 worktreeName

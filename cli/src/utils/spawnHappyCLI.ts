@@ -71,11 +71,20 @@ function resolveInvokedCwd(cwd: SpawnOptions['cwd']): string {
   return process.cwd();
 }
 
+function resolveCompiledExecutablePath(): string {
+  const configuredExecutablePath = process.env.HAPI_EXECUTABLE_PATH?.trim();
+  if (configuredExecutablePath && isCrossPlatformAbsolutePath(configuredExecutablePath) && existsSync(configuredExecutablePath)) {
+    return configuredExecutablePath;
+  }
+
+  return process.execPath;
+}
+
 export function getHappyCliCommand(args: string[]): HappyCliCommand {
   // Compiled binary mode: just use the executable directly
   if (isBunCompiled()) {
     return {
-      command: process.execPath,
+      command: resolveCompiledExecutablePath(),
       args
     };
   }

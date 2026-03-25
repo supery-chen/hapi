@@ -42,7 +42,10 @@ export async function runCodex(opts: {
         startedBy,
         workingDirectory,
         agentState: state,
-        model: opts.model
+        model: opts.model,
+        metadataOverrides: opts.modelReasoningEffort
+            ? { modelReasoningEffort: opts.modelReasoningEffort }
+            : undefined
     });
 
     const messageQueue = new MessageQueue2<EnhancedMode>((mode) => hashObject({

@@ -3,7 +3,7 @@ import { MessageQueue2 } from '@/utils/MessageQueue2';
 import { AgentSessionBase } from '@/agent/sessionBase';
 import type { CodexStatusSnapshot } from '@hapi/protocol/types';
 import type { EnhancedMode, PermissionMode } from './loop';
-import type { ReviewTarget } from './appServerTypes';
+import type { McpServerStatusEntry, ReviewTarget, SkillListEntry } from './appServerTypes';
 import type { CodexCliOverrides } from './utils/codexCliOverrides';
 import type { SessionModel } from '@/api/types';
 
@@ -11,6 +11,11 @@ export type CodexSlashCommandRuntimeProvider = {
     startReview: (target: ReviewTarget) => Promise<void>;
     startThreadCompaction: () => Promise<void>;
     rollbackThread: (numTurns: number) => Promise<void>;
+    listMcpServers: () => Promise<{
+        config: unknown;
+        statuses: McpServerStatusEntry[];
+    }>;
+    listSkills: () => Promise<SkillListEntry[]>;
 };
 
 export class CodexSession extends AgentSessionBase<EnhancedMode> {

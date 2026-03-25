@@ -200,3 +200,68 @@ export interface ReviewStartResponse {
     reviewThreadId?: string;
     [key: string]: unknown;
 }
+
+export interface McpServerStatusListParams {
+    cursor?: string | null;
+    limit?: number | null;
+}
+
+export interface McpServerStatusToolDescriptor {
+    name?: string;
+    description?: string;
+    inputSchema?: unknown;
+    [key: string]: unknown;
+}
+
+export interface McpServerStatusEntry {
+    name: string;
+    tools?: Record<string, McpServerStatusToolDescriptor> | null;
+    resources?: unknown[] | null;
+    resourceTemplates?: unknown[] | null;
+    authStatus?: string | null;
+    [key: string]: unknown;
+}
+
+export interface McpServerStatusListResponse {
+    data?: McpServerStatusEntry[];
+    nextCursor?: string | null;
+    [key: string]: unknown;
+}
+
+export interface SkillsListParams {
+    cwds?: string[];
+    forceReload?: boolean | null;
+}
+
+export interface SkillInterfaceDescriptor {
+    displayName?: string | null;
+    shortDescription?: string | null;
+    iconSmall?: string | null;
+    iconLarge?: string | null;
+    brandColor?: string | null;
+    defaultPrompt?: string | null;
+    [key: string]: unknown;
+}
+
+export interface SkillListEntry {
+    name: string;
+    description?: string | null;
+    shortDescription?: string | null;
+    enabled?: boolean | null;
+    scope?: string | null;
+    path?: string | null;
+    interface?: SkillInterfaceDescriptor | null;
+    [key: string]: unknown;
+}
+
+export interface SkillsListResultItem {
+    cwd?: string | null;
+    skills?: SkillListEntry[] | null;
+    errors?: unknown[] | null;
+    [key: string]: unknown;
+}
+
+export interface SkillsListResponse {
+    data?: SkillsListResultItem[];
+    [key: string]: unknown;
+}

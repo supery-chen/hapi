@@ -175,6 +175,8 @@ export function SessionChat(props: {
                 onViewFiles={props.session.metadata?.path ? handleViewFiles : undefined}
                 api={props.api}
                 onSessionDeleted={props.onBack}
+                contextLeftPercent={reduced.latestUsage?.contextLeftPercent ?? null}
+                contextWindow={reduced.latestUsage?.contextWindow ?? null}
             />
 
             {props.session.teamState && (

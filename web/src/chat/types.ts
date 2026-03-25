@@ -11,6 +11,16 @@ export type UsageData = {
 export type AgentEvent =
     | { type: 'message'; message: string }
     | { type: 'status'; snapshot: CodexStatusSnapshot }
+    | {
+        type: 'usage-updated'
+        inputTokens: number
+        outputTokens: number
+        cacheCreation: number
+        cacheRead: number
+        contextSize: number
+        contextWindow: number | null
+        contextLeftPercent: number | null
+    }
     | { type: 'title-changed'; title: string }
     | { type: 'limit-reached'; endsAt: number }
     | { type: 'ready' }

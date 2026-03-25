@@ -21,7 +21,7 @@ import { startRunnerControlServer } from './controlServer';
 import { createWorktree, removeWorktree, type WorktreeInfo } from './worktree';
 import { join } from 'path';
 import { buildMachineMetadata } from '@/agent/sessionFactory';
-import { hashRunnerCliApiToken } from './runnerIdentity';
+import { hashRunnerCliApiToken, normalizeRunnerApiUrl } from './runnerIdentity';
 
 export async function startRunner(): Promise<void> {
   // We don't have cleanup function at the time of server construction
@@ -196,7 +196,7 @@ export async function startRunner(): Promise<void> {
 
       const { directory, sessionId, machineId, approvedNewDirectoryCreation = true } = options;
       const agent = options.agent ?? 'codex';
-      const yolo = options.yolo === true;
+      const permissionMode = options.permissionMode ?? (options.yolo === true ? 'yolo' : 'default');
       const sessionType = options.sessionType ?? 'simple';
       const worktreeName = options.worktreeName;
       let directoryCreated = false;
@@ -340,8 +340,8 @@ export async function startRunner(): Promise<void> {
         if (options.modelReasoningEffort) {
           args.push('--model-reasoning-effort', options.modelReasoningEffort);
         }
-        if (yolo) {
-          args.push('--yolo');
+        if (permissionMode !== 'default') {
+          args.push('--permission-mode', permissionMode);
         }
 
         // sessionId reserved for future use
@@ -605,7 +605,7 @@ export async function startRunner(): Promise<void> {
       startTime: new Date().toLocaleString(),
       startedWithCliVersion: packageJson.version,
       startedWithCliMtimeMs,
-      startedWithApiUrl: configuration.apiUrl,
+      startedWithApiUrl: normalizeRunnerApiUrl(configuration.apiUrl),
       startedWithMachineId: machineId,
       startedWithCliApiTokenHash: hashRunnerCliApiToken(configuration.cliApiToken),
       runnerLogPath: logger.logFilePath
