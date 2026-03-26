@@ -48,7 +48,7 @@ export function useSendMessage(
     sessionId: string | null,
     options?: UseSendMessageOptions
 ): {
-    sendMessage: (text: string, attachments?: AttachmentMetadata[]) => void
+    sendMessage: (text: string, attachments?: AttachmentMetadata[]) => boolean
     retryMessage: (localId: string) => void
     isSending: boolean
 } {
@@ -100,20 +100,20 @@ export function useSendMessage(
         },
     })
 
-    const sendMessage = (text: string, attachments?: AttachmentMetadata[]) => {
+    const sendMessage = (text: string, attachments?: AttachmentMetadata[]): boolean => {
         if (!api) {
             options?.onBlocked?.('no-api')
             haptic.notification('error')
-            return
+            return false
         }
         if (!sessionId) {
             options?.onBlocked?.('no-session')
             haptic.notification('error')
-            return
+            return false
         }
         if (mutation.isPending || resolveGuardRef.current) {
             options?.onBlocked?.('pending')
-            return
+            return false
         }
         const localId = makeClientSideId('local')
         const createdAt = Date.now()
@@ -150,6 +150,7 @@ export function useSendMessage(
                 optimistic: !isSlashCommand,
             })
         })()
+        return true
     }
 
     const retryMessage = (localId: string) => {

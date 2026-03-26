@@ -52,6 +52,12 @@ export function HappyComposer(props: {
     onTerminal?: () => void
     autocompletePrefixes?: string[]
     autocompleteSuggestions?: (query: string) => Promise<Suggestion[]>
+    queuedMessages?: Array<{
+        id: string
+        text: string
+        attachmentCount: number
+    }>
+    onCancelQueuedMessage?: (id: string) => void
 }) {
     const { t } = useTranslation()
     const {
@@ -70,7 +76,9 @@ export function HappyComposer(props: {
         onModelChange,
         onTerminal,
         autocompletePrefixes = ['@', '/', '$'],
-        autocompleteSuggestions = defaultSuggestionHandler
+        autocompleteSuggestions = defaultSuggestionHandler,
+        queuedMessages = [],
+        onCancelQueuedMessage
     } = props
 
     // Use ?? so missing values fall back to default (destructuring defaults only handle undefined)
@@ -98,7 +106,7 @@ export function HappyComposer(props: {
         const path = (attachment as { path?: string }).path
         return typeof path === 'string' && path.length > 0
     })
-    const canSend = (hasText || hasAttachments) && attachmentsReady && !controlsDisabled && !threadIsRunning
+    const canSubmit = (hasText || hasAttachments) && attachmentsReady && !controlsDisabled
 
     const [inputState, setInputState] = useState<TextInputState>({
         text: '',
@@ -247,7 +255,7 @@ export function HappyComposer(props: {
 
         if (key === 'Enter') {
             e.preventDefault()
-            if (!canSend) return
+            if (!canSubmit) return
             api.composer().send()
             return
         }
@@ -278,7 +286,7 @@ export function HappyComposer(props: {
         onPermissionModeChange,
         permissionMode,
         permissionModes,
-        canSend,
+        canSubmit,
         api,
         haptic
     ])
@@ -552,6 +560,57 @@ export function HappyComposer(props: {
                         agentFlavor={agentFlavor}
                     />
 
+                    {queuedMessages.length > 0 ? (
+                        <div className="mb-2 flex flex-col gap-2">
+                            {queuedMessages.map((message) => {
+                                const summaryText = message.text.trim().length > 0
+                                    ? message.text.trim()
+                                    : t('composer.queue.attachmentsOnly')
+                                return (
+                                    <div
+                                        key={message.id}
+                                        className="rounded-2xl border border-[var(--app-divider)] bg-[var(--app-secondary-bg)] px-3 py-2"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="mb-1 flex flex-wrap items-center gap-2">
+                                                    <span className="rounded-full bg-[var(--app-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--app-hint)]">
+                                                        {t('composer.queue.title')}
+                                                    </span>
+                                                    <span className="text-[10px] text-[var(--app-hint)]">
+                                                        {t('composer.queue.waiting')}
+                                                    </span>
+                                                    {message.attachmentCount > 0 ? (
+                                                        <span className="text-[10px] text-[var(--app-hint)]">
+                                                            {t('composer.queue.attachments', {
+                                                                n: message.attachmentCount,
+                                                                s: message.attachmentCount === 1 ? '' : 's'
+                                                            })}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                                <div className="line-clamp-2 break-words text-sm text-[var(--app-fg)]">
+                                                    {summaryText}
+                                                </div>
+                                            </div>
+
+                                            {onCancelQueuedMessage ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onCancelQueuedMessage(message.id)}
+                                                    className="shrink-0 rounded-full px-2 py-1 text-xs text-[var(--app-hint)] transition-colors hover:bg-[var(--app-bg)] hover:text-[var(--app-fg)]"
+                                                    title={t('composer.queue.cancel')}
+                                                >
+                                                    {t('button.cancel')}
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    ) : null}
+
                     <div className="overflow-hidden rounded-[20px] bg-[var(--app-secondary-bg)]">
                         {attachments.length > 0 ? (
                             <div className="flex flex-wrap gap-2 px-4 pt-3">
@@ -577,7 +636,7 @@ export function HappyComposer(props: {
                         </div>
 
                         <ComposerButtons
-                            canSend={canSend}
+                            canSend={canSubmit}
                             controlsDisabled={controlsDisabled}
                             showSettingsButton={showSettingsButton}
                             onSettingsToggle={handleSettingsToggle}

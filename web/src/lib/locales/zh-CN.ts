@@ -212,6 +212,11 @@ export default {
   'composer.attach': '添加文件',
   'composer.send': '发送',
   'composer.stop': '停止',
+  'composer.queue.title': '排队消息',
+  'composer.queue.waiting': '当前任务结束后自动发送',
+  'composer.queue.cancel': '取消排队消息',
+  'composer.queue.attachments': '{n} 个附件',
+  'composer.queue.attachmentsOnly': '仅附件',
 
   // Banners
   'offline.title': '离线',

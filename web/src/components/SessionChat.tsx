@@ -15,6 +15,7 @@ import { createAttachmentAdapter } from '@/lib/attachmentAdapter'
 import { SessionHeader } from '@/components/SessionHeader'
 import { TeamPanel } from '@/components/TeamPanel'
 import { usePlatform } from '@/hooks/usePlatform'
+import { useQueuedComposerMessages } from '@/hooks/useQueuedComposerMessages'
 import { useSessionActions } from '@/hooks/mutations/useSessionActions'
 
 export function SessionChat(props: {
@@ -31,7 +32,7 @@ export function SessionChat(props: {
     onBack: () => void
     onRefresh: () => void
     onLoadMore: () => Promise<unknown>
-    onSend: (text: string, attachments?: AttachmentMetadata[]) => void
+    onSend: (text: string, attachments?: AttachmentMetadata[]) => boolean
     onFlushPending: () => void
     onAtBottomChange: (atBottom: boolean) => void
     onRetryMessage?: (localId: string) => void
@@ -145,10 +146,26 @@ export function SessionChat(props: {
         })
     }, [navigate, props.session.id])
 
+    const {
+        queuedMessages,
+        submitMessage,
+        removeQueuedMessage
+    } = useQueuedComposerMessages({
+        sessionId: props.session.id,
+        thinking: props.session.thinking,
+        isSending: props.isSending,
+        onSend: props.onSend,
+        onDispatched: () => {
+            setForceScrollToken((token) => token + 1)
+        }
+    })
+
     const handleSend = useCallback((text: string, attachments?: AttachmentMetadata[]) => {
-        props.onSend(text, attachments)
-        setForceScrollToken((token) => token + 1)
-    }, [props.onSend])
+        const result = submitMessage(text, attachments)
+        if (result === 'queued') {
+            haptic.impact('light')
+        }
+    }, [submitMessage, haptic])
 
     const attachmentAdapter = useMemo(() => {
         if (!props.session.active) {
@@ -234,6 +251,12 @@ export function SessionChat(props: {
                         onPermissionModeChange={handlePermissionModeChange}
                         onTerminal={props.session.active ? handleViewTerminal : undefined}
                         autocompleteSuggestions={props.autocompleteSuggestions}
+                        queuedMessages={queuedMessages.map((message) => ({
+                            id: message.id,
+                            text: message.text,
+                            attachmentCount: message.attachments.length
+                        }))}
+                        onCancelQueuedMessage={removeQueuedMessage}
                     />
                 </div>
             </AssistantRuntimeProvider>

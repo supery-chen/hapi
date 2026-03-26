@@ -210,6 +210,11 @@ export default {
   'composer.attach': 'Attach file',
   'composer.send': 'Send',
   'composer.stop': 'Stop',
+  'composer.queue.title': 'Queued',
+  'composer.queue.waiting': 'Will send when current task finishes',
+  'composer.queue.cancel': 'Cancel queued message',
+  'composer.queue.attachments': '{n} attachment{s}',
+  'composer.queue.attachmentsOnly': 'Attachments only',
 
   // Banners
   'offline.title': 'Offline',
