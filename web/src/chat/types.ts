@@ -162,6 +162,21 @@ export type CliOutputBlock = {
     meta?: unknown
 }
 
+export type CliOutputGroupBlock = {
+    kind: 'cli-output-group'
+    id: string
+    createdAt: number
+    source: 'user' | 'assistant'
+    blocks: CliOutputBlock[]
+}
+
+export type TerminalToolGroupBlock = {
+    kind: 'terminal-tool-group'
+    id: string
+    createdAt: number
+    blocks: ToolCallBlock[]
+}
+
 export type AgentEventBlock = {
     kind: 'agent-event'
     id: string
@@ -180,4 +195,4 @@ export type ToolCallBlock = {
     meta?: unknown
 }
 
-export type ChatBlock = UserTextBlock | AgentTextBlock | AgentReasoningBlock | CliOutputBlock | ToolCallBlock | AgentEventBlock
+export type ChatBlock = UserTextBlock | AgentTextBlock | AgentReasoningBlock | CliOutputBlock | CliOutputGroupBlock | TerminalToolGroupBlock | ToolCallBlock | AgentEventBlock

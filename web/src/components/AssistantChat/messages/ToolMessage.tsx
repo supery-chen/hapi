@@ -10,6 +10,8 @@ import { MessageStatusIndicator } from '@/components/AssistantChat/messages/Mess
 import { ToolCard } from '@/components/ToolCard/ToolCard'
 import { useHappyChatContext } from '@/components/AssistantChat/context'
 import { CliOutputBlock } from '@/components/CliOutputBlock'
+import { CliOutputGroup } from '@/components/CliOutputGroup'
+import { TerminalToolGroup } from '@/components/TerminalToolGroup'
 
 function isToolCallBlock(value: unknown): value is ToolCallBlock {
     if (!isObject(value)) return false
@@ -91,6 +93,28 @@ function HappyNestedBlockList(props: {
                                 <CliOutputBlock text={block.text} />
                             </div>
                         </div>
+                    )
+                }
+
+                if (block.kind === 'cli-output-group') {
+                    return (
+                        <div key={`cli-group:${block.id}`} className="px-1 min-w-0 max-w-full overflow-x-hidden">
+                            <CliOutputGroup blocks={block.blocks} source={block.source} />
+                        </div>
+                    )
+                }
+
+                if (block.kind === 'terminal-tool-group') {
+                    return (
+                        <TerminalToolGroup
+                            key={`terminal-tool-group:${block.id}`}
+                            api={ctx.api}
+                            blocks={block.blocks}
+                            metadata={ctx.metadata}
+                            sessionId={ctx.sessionId}
+                            disabled={ctx.disabled}
+                            onDone={ctx.onRefresh}
+                        />
                     )
                 }
 

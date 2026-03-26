@@ -5,6 +5,8 @@ import type {
     AgentTextBlock,
     ChatBlock,
     CliOutputBlock,
+    CliOutputGroupBlock,
+    TerminalToolGroupBlock,
     ToolCallBlock,
     ToolPermission,
     UserTextBlock,
@@ -17,6 +19,8 @@ function indexBlocks(blocks: ChatBlock[], map: ChatBlocksById): void {
         map.set(block.id, block)
         if (block.kind === 'tool-call') {
             indexBlocks(block.children, map)
+        } else if (block.kind === 'terminal-tool-group') {
+            indexBlocks(block.blocks, map)
         }
     }
 }
@@ -145,6 +149,28 @@ function areCliOutputBlocksEqual(left: CliOutputBlock, right: CliOutputBlock): b
         && left.meta === right.meta
 }
 
+function areCliOutputGroupBlocksEqual(left: CliOutputGroupBlock, right: CliOutputGroupBlock): boolean {
+    return left.createdAt === right.createdAt
+        && left.source === right.source
+        && left.blocks.length === right.blocks.length
+        && left.blocks.every((block, index) => {
+            const nextBlock = right.blocks[index]
+            return nextBlock ? areCliOutputBlocksEqual(block, nextBlock) : false
+        })
+}
+
+function areTerminalToolGroupBlocksEqual(left: TerminalToolGroupBlock, right: TerminalToolGroupBlock): boolean {
+    return left.createdAt === right.createdAt
+        && left.blocks.length === right.blocks.length
+        && left.blocks.every((block, index) => {
+            const nextBlock = right.blocks[index]
+            if (!nextBlock) return false
+            const childrenSame = block.children.length === nextBlock.children.length
+                && block.children.every((child, childIndex) => child === nextBlock.children[childIndex])
+            return areToolCallsEqual(block, nextBlock, childrenSame)
+        })
+}
+
 function areAgentEventBlocksEqual(left: AgentEventBlock, right: AgentEventBlock): boolean {
     return left.createdAt === right.createdAt
         && left.meta === right.meta
@@ -216,6 +242,16 @@ function reconcileBlock(block: ChatBlock, prevById: ChatBlocksById): ChatBlock {
     if (block.kind === 'cli-output') {
         const prevBlock = prev as CliOutputBlock
         return areCliOutputBlocksEqual(prevBlock, block) ? prevBlock : block
+    }
+
+    if (block.kind === 'cli-output-group') {
+        const prevBlock = prev as CliOutputGroupBlock
+        return areCliOutputGroupBlocksEqual(prevBlock, block) ? prevBlock : block
+    }
+
+    if (block.kind === 'terminal-tool-group') {
+        const prevBlock = prev as TerminalToolGroupBlock
+        return areTerminalToolGroupBlocksEqual(prevBlock, block) ? prevBlock : block
     }
 
     if (block.kind === 'agent-reasoning') {

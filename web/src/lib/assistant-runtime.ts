@@ -3,18 +3,20 @@ import type { AppendMessage, AttachmentAdapter, ThreadMessageLike } from '@assis
 import { useExternalMessageConverter, useExternalStoreRuntime } from '@assistant-ui/react'
 import { safeStringify } from '@hapi/protocol'
 import { renderEventLabel } from '@/chat/presentation'
-import type { ChatBlock, CliOutputBlock } from '@/chat/types'
-import type { AgentEvent, ToolCallBlock } from '@/chat/types'
+import type { ChatBlock, CliOutputBlock, ToolCallBlock, TerminalToolGroupBlock } from '@/chat/types'
+import type { AgentEvent } from '@/chat/types'
 import type { AttachmentMetadata, MessageStatus as HappyMessageStatus, Session } from '@/types/api'
 
 export type HappyChatMessageMetadata = {
-    kind: 'user' | 'assistant' | 'tool' | 'event' | 'cli-output'
+    kind: 'user' | 'assistant' | 'tool' | 'event' | 'cli-output' | 'cli-output-group' | 'terminal-tool-group'
     status?: HappyMessageStatus
     localId?: string | null
     originalText?: string
     toolCallId?: string
     event?: AgentEvent
     source?: CliOutputBlock['source']
+    cliOutputBlocks?: CliOutputBlock[]
+    terminalToolBlocks?: ToolCallBlock[]
     attachments?: AttachmentMetadata[]
 }
 
@@ -90,7 +92,39 @@ function toThreadMessageLike(block: ChatBlock): ThreadMessageLike {
         }
     }
 
-    const toolBlock: ToolCallBlock = block
+    if (block.kind === 'cli-output-group') {
+        return {
+            role: block.source === 'user' ? 'user' : 'assistant',
+            id: block.id,
+            createdAt: new Date(block.createdAt),
+            content: [{ type: 'text', text: '' }],
+            metadata: {
+                custom: {
+                    kind: 'cli-output-group',
+                    source: block.source,
+                    cliOutputBlocks: block.blocks
+                } satisfies HappyChatMessageMetadata
+            }
+        }
+    }
+
+    if (block.kind === 'terminal-tool-group') {
+        const terminalGroup = block as TerminalToolGroupBlock
+        return {
+            role: 'assistant',
+            id: terminalGroup.id,
+            createdAt: new Date(terminalGroup.createdAt),
+            content: [{ type: 'text', text: '' }],
+            metadata: {
+                custom: {
+                    kind: 'terminal-tool-group',
+                    terminalToolBlocks: terminalGroup.blocks
+                } satisfies HappyChatMessageMetadata
+            }
+        }
+    }
+
+    const toolBlock: ToolCallBlock = block as ToolCallBlock
     const messageId = `tool:${toolBlock.id}`
     const inputText = safeStringify(toolBlock.tool.input)
 

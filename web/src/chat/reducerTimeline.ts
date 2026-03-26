@@ -2,6 +2,7 @@ import type { ChatBlock, ToolCallBlock, ToolPermission } from '@/chat/types'
 import type { TracedMessage } from '@/chat/tracer'
 import { createCliOutputBlock, isCliOutputText, mergeCliOutputBlocks } from '@/chat/reducerCliOutput'
 import { parseMessageAsEvent } from '@/chat/reducerEvents'
+import { mergeTerminalToolGroupBlocks } from '@/chat/reducerTerminalToolGroups'
 import { ensureToolBlock, extractTitleFromChangeTitleInput, isChangeTitleToolName, type PermissionEntry } from '@/chat/reducerTools'
 
 export function reduceTimeline(
@@ -236,5 +237,9 @@ export function reduceTimeline(
         }
     }
 
-    return { blocks: mergeCliOutputBlocks(blocks), toolBlocksById, hasReadyEvent }
+    return {
+        blocks: mergeTerminalToolGroupBlocks(mergeCliOutputBlocks(blocks)),
+        toolBlocksById,
+        hasReadyEvent
+    }
 }

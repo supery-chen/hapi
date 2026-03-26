@@ -76,7 +76,7 @@ function buildCliOutput(text: string, t?: (key: string) => string): string {
     return sections.join('\n\n')
 }
 
-function extractCommandName(text: string): string | null {
+export function extractCommandName(text: string): string | null {
     const match = text.match(COMMAND_NAME_REGEX)
     if (!match) return null
     const normalized = normalizeCliText(match[1] ?? '')

@@ -1,4 +1,4 @@
-import type { ChatBlock, CliOutputBlock } from '@/chat/types'
+import type { ChatBlock, CliOutputBlock, CliOutputGroupBlock } from '@/chat/types'
 
 const CLI_TAG_REGEX = /<(?:local-command-[a-z-]+|command-(?:name|message|args))>/i
 const CLI_COMMAND_NAME_REGEX = /<command-name>/i
@@ -45,16 +45,27 @@ export function createCliOutputBlock(props: {
     }
 }
 
+function createCliOutputGroupBlock(blocks: CliOutputBlock[]): CliOutputGroupBlock {
+    const first = blocks[0]!
+    return {
+        kind: 'cli-output-group',
+        id: `cli-group:${first.id}`,
+        createdAt: first.createdAt,
+        source: first.source,
+        blocks
+    }
+}
+
 export function mergeCliOutputBlocks(blocks: ChatBlock[]): ChatBlock[] {
-    const merged: ChatBlock[] = []
+    const mergedCliBlocks: ChatBlock[] = []
 
     for (const block of blocks) {
         if (block.kind !== 'cli-output') {
-            merged.push(block)
+            mergedCliBlocks.push(block)
             continue
         }
 
-        const prev = merged[merged.length - 1]
+        const prev = mergedCliBlocks[mergedCliBlocks.length - 1]
         if (
             prev
             && prev.kind === 'cli-output'
@@ -64,12 +75,47 @@ export function mergeCliOutputBlocks(blocks: ChatBlock[]): ChatBlock[] {
             && hasLocalCommandStdoutTag(block.text)
         ) {
             const separator = prev.text.endsWith('\n') || block.text.startsWith('\n') ? '' : '\n'
-            merged[merged.length - 1] = { ...prev, text: `${prev.text}${separator}${block.text}` }
+            mergedCliBlocks[mergedCliBlocks.length - 1] = { ...prev, text: `${prev.text}${separator}${block.text}` }
             continue
         }
 
-        merged.push(block)
+        mergedCliBlocks.push(block)
     }
 
-    return merged
+    const grouped: ChatBlock[] = []
+    let pendingCliGroup: CliOutputBlock[] = []
+
+    const flushPendingCliGroup = () => {
+        if (pendingCliGroup.length === 0) {
+            return
+        }
+        if (pendingCliGroup.length === 1) {
+            grouped.push(pendingCliGroup[0]!)
+        } else {
+            grouped.push(createCliOutputGroupBlock(pendingCliGroup))
+        }
+        pendingCliGroup = []
+    }
+
+    for (const block of mergedCliBlocks) {
+        if (block.kind === 'cli-output') {
+            const previous = pendingCliGroup[pendingCliGroup.length - 1]
+            if (!previous || previous.source === block.source) {
+                pendingCliGroup.push(block)
+                continue
+            }
+        }
+
+        flushPendingCliGroup()
+
+        if (block.kind === 'cli-output') {
+            pendingCliGroup.push(block)
+            continue
+        }
+
+        grouped.push(block)
+    }
+
+    flushPendingCliGroup()
+    return grouped
 }
