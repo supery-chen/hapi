@@ -218,8 +218,15 @@ export class SyncEngine {
         this.machineCache.reloadAll()
     }
 
-    getOrCreateSession(tag: string, metadata: unknown, agentState: unknown, namespace: string, model?: string): Session {
-        return this.sessionCache.getOrCreateSession(tag, metadata, agentState, namespace, model)
+    getOrCreateSession(
+        tag: string,
+        metadata: unknown,
+        agentState: unknown,
+        namespace: string,
+        model?: string,
+        sessionId?: string
+    ): Session {
+        return this.sessionCache.getOrCreateSession(tag, metadata, agentState, namespace, model, sessionId)
     }
 
     getOrCreateMachine(id: string, metadata: unknown, runnerState: unknown, namespace: string): Machine {
@@ -369,12 +376,36 @@ export class SyncEngine {
         permissionMode?: PermissionMode,
         sessionType?: 'simple' | 'worktree',
         worktreeName?: string,
-        resumeSessionId?: string
+        resumeSessionId?: string,
+        sessionId?: string
     ): Promise<{ type: 'success'; sessionId: string } | { type: 'error'; message: string }> {
-        return await this.rpcGateway.spawnSession(machineId, directory, agent, model, modelReasoningEffort, permissionMode, sessionType, worktreeName, resumeSessionId)
+        return await this.rpcGateway.spawnSession(
+            machineId,
+            directory,
+            agent,
+            model,
+            modelReasoningEffort,
+            permissionMode,
+            sessionType,
+            worktreeName,
+            resumeSessionId,
+            sessionId
+        )
     }
 
     async resumeSession(sessionId: string, namespace: string): Promise<ResumeSessionResult> {
+        return await this.resumeSessionInternal(sessionId, namespace, { preserveSessionId: false })
+    }
+
+    async restoreSessionForUpgrade(sessionId: string, namespace: string): Promise<ResumeSessionResult> {
+        return await this.resumeSessionInternal(sessionId, namespace, { preserveSessionId: true })
+    }
+
+    private async resumeSessionInternal(
+        sessionId: string,
+        namespace: string,
+        options: { preserveSessionId: boolean }
+    ): Promise<ResumeSessionResult> {
         const access = this.sessionCache.resolveSessionAccess(sessionId, namespace)
         if (!access.ok) {
             return {
@@ -433,7 +464,8 @@ export class SyncEngine {
             session.permissionMode,
             undefined,
             undefined,
-            resumeToken
+            resumeToken,
+            options.preserveSessionId ? access.sessionId : undefined
         )
 
         if (spawnResult.type !== 'success') {

@@ -1,4 +1,5 @@
 import type { Database } from 'bun:sqlite'
+import type { PermissionMode } from '@hapi/protocol/types'
 
 import type { StoredSession, VersionedUpdateResult } from './types'
 import {
@@ -9,6 +10,7 @@ import {
     getSessions,
     getSessionsByNamespace,
     setSessionModel,
+    setSessionPermissionMode,
     setSessionTeamState,
     setSessionTodos,
     updateSessionAgentState,
@@ -24,6 +26,17 @@ export class SessionStore {
 
     getOrCreateSession(tag: string, metadata: unknown, agentState: unknown, namespace: string, model?: string): StoredSession {
         return getOrCreateSession(this.db, tag, metadata, agentState, namespace, model)
+    }
+
+    getOrCreateSessionWithId(
+        tag: string,
+        metadata: unknown,
+        agentState: unknown,
+        namespace: string,
+        model?: string,
+        sessionId?: string
+    ): StoredSession {
+        return getOrCreateSession(this.db, tag, metadata, agentState, namespace, model, sessionId)
     }
 
     updateSessionMetadata(
@@ -55,6 +68,15 @@ export class SessionStore {
 
     setSessionModel(id: string, model: string | null, namespace: string, options?: { touchUpdatedAt?: boolean }): boolean {
         return setSessionModel(this.db, id, model, namespace, options)
+    }
+
+    setSessionPermissionMode(
+        id: string,
+        permissionMode: PermissionMode | null,
+        namespace: string,
+        options?: { touchUpdatedAt?: boolean }
+    ): boolean {
+        return setSessionPermissionMode(this.db, id, permissionMode, namespace, options)
     }
 
     getSession(id: string): StoredSession | null {

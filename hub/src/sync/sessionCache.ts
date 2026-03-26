@@ -55,8 +55,15 @@ export class SessionCache {
         return this.getSessions().filter((session) => session.active)
     }
 
-    getOrCreateSession(tag: string, metadata: unknown, agentState: unknown, namespace: string, model?: string): Session {
-        const stored = this.store.sessions.getOrCreateSession(tag, metadata, agentState, namespace, model)
+    getOrCreateSession(
+        tag: string,
+        metadata: unknown,
+        agentState: unknown,
+        namespace: string,
+        model?: string,
+        sessionId?: string
+    ): Session {
+        const stored = this.store.sessions.getOrCreateSessionWithId(tag, metadata, agentState, namespace, model, sessionId)
         return this.refreshSession(stored.id) ?? (() => { throw new Error('Failed to load session') })()
     }
 
@@ -127,7 +134,7 @@ export class SessionCache {
             todos,
             teamState,
             model: stored.model,
-            permissionMode: existing?.permissionMode,
+            permissionMode: (stored.permissionMode as PermissionMode | null | undefined) ?? existing?.permissionMode,
             collaborationMode: existing?.collaborationMode
         }
 
@@ -169,6 +176,9 @@ export class SessionCache {
         session.thinkingAt = t
         if (payload.permissionMode !== undefined) {
             session.permissionMode = payload.permissionMode
+            this.store.sessions.setSessionPermissionMode(payload.sid, payload.permissionMode, session.namespace, {
+                touchUpdatedAt: false
+            })
         }
         if (payload.model !== undefined) {
             if (payload.model !== session.model) {
@@ -253,6 +263,9 @@ export class SessionCache {
 
         if (config.permissionMode !== undefined) {
             session.permissionMode = config.permissionMode
+            this.store.sessions.setSessionPermissionMode(sessionId, config.permissionMode, session.namespace, {
+                touchUpdatedAt: false
+            })
         }
         if (config.model !== undefined) {
             if (config.model !== session.model) {
@@ -362,6 +375,18 @@ export class SessionCache {
             })
             if (!updated) {
                 throw new Error('Failed to preserve session model during merge')
+            }
+        }
+
+        if (newStored.permissionMode === null && oldStored.permissionMode !== null) {
+            const updated = this.store.sessions.setSessionPermissionMode(
+                newSessionId,
+                oldStored.permissionMode as PermissionMode,
+                namespace,
+                { touchUpdatedAt: false }
+            )
+            if (!updated) {
+                throw new Error('Failed to preserve session permission mode during merge')
             }
         }
 

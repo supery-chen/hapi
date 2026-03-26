@@ -21,6 +21,7 @@ export type SessionBootstrapOptions = {
     startedBy?: SessionStartedBy
     workingDirectory?: string
     tag?: string
+    sessionId?: string
     agentState?: AgentState | null
     model?: string
     metadataOverrides?: Partial<Metadata>
@@ -108,7 +109,7 @@ async function reportSessionStarted(sessionId: string, metadata: Metadata): Prom
 export async function bootstrapSession(options: SessionBootstrapOptions): Promise<SessionBootstrapResult> {
     const workingDirectory = options.workingDirectory ?? getInvokedCwd()
     const startedBy = options.startedBy ?? 'terminal'
-    const sessionTag = options.tag ?? randomUUID()
+    const sessionTag = options.tag ?? options.sessionId ?? randomUUID()
     const agentState = options.agentState === undefined ? {} : options.agentState
 
     const api = await ApiClient.create()
@@ -129,20 +130,32 @@ export async function bootstrapSession(options: SessionBootstrapOptions): Promis
 
     const sessionInfo = await api.getOrCreateSession({
         tag: sessionTag,
+        sessionId: options.sessionId,
         metadata,
         state: agentState,
         model: options.model
     })
 
     const session = api.sessionSyncClient(sessionInfo)
+    const effectiveMetadata = {
+        ...(sessionInfo.metadata ?? {}),
+        ...metadata
+    }
 
-    await reportSessionStarted(sessionInfo.id, metadata)
+    if (options.sessionId) {
+        session.updateMetadata((current) => ({
+            ...current,
+            ...effectiveMetadata
+        }))
+    }
+
+    await reportSessionStarted(sessionInfo.id, effectiveMetadata)
 
     return {
         api,
         session,
         sessionInfo,
-        metadata,
+        metadata: effectiveMetadata,
         machineId,
         startedBy,
         workingDirectory

@@ -28,6 +28,7 @@ export async function runCodex(opts: {
     codexArgs?: string[];
     permissionMode?: PermissionMode;
     resumeSessionId?: string;
+    hapiSessionId?: string;
     model?: string;
     modelReasoningEffort?: string;
 }): Promise<void> {
@@ -37,10 +38,11 @@ export async function runCodex(opts: {
     logger.debug(`[codex] Starting with options: startedBy=${startedBy}`);
 
     const state: AgentState = {};
-    const { api, session } = await bootstrapSession({
+    const { api, session, sessionInfo } = await bootstrapSession({
         flavor: 'codex',
         startedBy,
         workingDirectory,
+        sessionId: opts.hapiSessionId,
         agentState: state,
         model: opts.model,
         metadataOverrides: opts.modelReasoningEffort
@@ -58,10 +60,10 @@ export async function runCodex(opts: {
     const codexCliOverrides = parseCodexCliOverrides(opts.codexArgs);
     const sessionWrapperRef: { current: CodexSession | null } = { current: null };
 
-    let currentPermissionMode: PermissionMode = opts.permissionMode ?? 'default';
-    let currentModel = opts.model;
-    const currentModelReasoningEffort = opts.modelReasoningEffort;
-    let currentCollaborationMode: EnhancedMode['collaborationMode'] = 'default';
+    let currentPermissionMode: PermissionMode = opts.permissionMode ?? sessionInfo.permissionMode ?? 'default';
+    let currentModel = opts.model ?? sessionInfo.model ?? undefined;
+    const currentModelReasoningEffort = opts.modelReasoningEffort ?? sessionInfo.metadata?.modelReasoningEffort;
+    let currentCollaborationMode: EnhancedMode['collaborationMode'] = sessionInfo.collaborationMode ?? 'default';
 
     const lifecycle = createRunnerLifecycle({
         session,

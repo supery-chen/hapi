@@ -22,7 +22,7 @@ export { PushStore } from './pushStore'
 export { SessionStore } from './sessionStore'
 export { UserStore } from './userStore'
 
-const SCHEMA_VERSION: number = 5
+const SCHEMA_VERSION: number = 6
 const REQUIRED_TABLES = [
     'sessions',
     'machines',
@@ -84,7 +84,7 @@ export class Store {
     }
 
     private initSchema(): void {
-        const currentVersion = this.getUserVersion()
+        let currentVersion = this.getUserVersion()
         if (currentVersion === 0) {
             if (this.hasAnyUserTables()) {
                 this.migrateLegacySchemaIfNeeded()
@@ -116,8 +116,17 @@ export class Store {
             return
         }
 
-        if (currentVersion === 4 && SCHEMA_VERSION === 5) {
+        if (currentVersion === 4 && SCHEMA_VERSION >= 5) {
             this.migrateFromV4ToV5()
+            this.setUserVersion(5)
+            currentVersion = 5
+            if (SCHEMA_VERSION === 5) {
+                return
+            }
+        }
+
+        if (currentVersion === 5 && SCHEMA_VERSION === 6) {
+            this.migrateFromV5ToV6()
             this.setUserVersion(SCHEMA_VERSION)
             return
         }
@@ -143,6 +152,7 @@ export class Store {
                 agent_state TEXT,
                 agent_state_version INTEGER DEFAULT 1,
                 model TEXT,
+                permission_mode TEXT,
                 todos TEXT,
                 todos_updated_at INTEGER,
                 team_state TEXT,
@@ -309,6 +319,13 @@ export class Store {
         const columns = this.getSessionColumnNames()
         if (!columns.has('model')) {
             this.db.exec('ALTER TABLE sessions ADD COLUMN model TEXT')
+        }
+    }
+
+    private migrateFromV5ToV6(): void {
+        const columns = this.getSessionColumnNames()
+        if (!columns.has('permission_mode')) {
+            this.db.exec('ALTER TABLE sessions ADD COLUMN permission_mode TEXT')
         }
     }
 

@@ -16,6 +16,7 @@ export class ApiClient {
 
     async getOrCreateSession(opts: {
         tag: string
+        sessionId?: string
         metadata: Metadata
         state: AgentState | null
         model?: string
@@ -24,6 +25,7 @@ export class ApiClient {
             `${configuration.apiUrl}/cli/sessions`,
             {
                 tag: opts.tag,
+                sessionId: opts.sessionId,
                 metadata: opts.metadata,
                 agentState: opts.state,
                 model: opts.model

@@ -1,5 +1,6 @@
 import type { Database } from 'bun:sqlite'
 import { randomUUID } from 'node:crypto'
+import type { PermissionMode } from '@hapi/protocol/types'
 
 import type { StoredSession, VersionedUpdateResult } from './types'
 import { safeJsonParse } from './json'
@@ -17,6 +18,7 @@ type DbSessionRow = {
     agent_state: string | null
     agent_state_version: number
     model: string | null
+    permission_mode: string | null
     todos: string | null
     todos_updated_at: number | null
     team_state: string | null
@@ -39,6 +41,7 @@ function toStoredSession(row: DbSessionRow): StoredSession {
         agentState: safeJsonParse(row.agent_state),
         agentStateVersion: row.agent_state_version,
         model: row.model,
+        permissionMode: row.permission_mode,
         todos: safeJsonParse(row.todos),
         todosUpdatedAt: row.todos_updated_at,
         teamState: safeJsonParse(row.team_state),
@@ -55,8 +58,16 @@ export function getOrCreateSession(
     metadata: unknown,
     agentState: unknown,
     namespace: string,
-    model?: string
+    model?: string,
+    sessionId?: string
 ): StoredSession {
+    if (sessionId) {
+        const existingById = getSessionByNamespace(db, sessionId, namespace)
+        if (existingById) {
+            return existingById
+        }
+    }
+
     const existing = db.prepare(
         'SELECT * FROM sessions WHERE tag = ? AND namespace = ? ORDER BY created_at DESC LIMIT 1'
     ).get(tag, namespace) as DbSessionRow | undefined
@@ -66,7 +77,7 @@ export function getOrCreateSession(
     }
 
     const now = Date.now()
-    const id = randomUUID()
+    const id = sessionId ?? randomUUID()
 
     const metadataJson = JSON.stringify(metadata)
     const agentStateJson = agentState === null || agentState === undefined ? null : JSON.stringify(agentState)
@@ -77,6 +88,7 @@ export function getOrCreateSession(
             metadata, metadata_version,
             agent_state, agent_state_version,
             model,
+            permission_mode,
             todos, todos_updated_at,
             active, active_at, seq
         ) VALUES (
@@ -84,6 +96,7 @@ export function getOrCreateSession(
             @metadata, 1,
             @agent_state, 1,
             @model,
+            NULL,
             NULL, NULL,
             0, NULL, 0
         )
@@ -254,6 +267,39 @@ export function setSessionModel(
             id,
             namespace,
             model,
+            updated_at: now,
+            touch_updated_at: touchUpdatedAt ? 1 : 0
+        })
+
+        return result.changes === 1
+    } catch {
+        return false
+    }
+}
+
+export function setSessionPermissionMode(
+    db: Database,
+    id: string,
+    permissionMode: PermissionMode | null,
+    namespace: string,
+    options?: { touchUpdatedAt?: boolean }
+): boolean {
+    const now = Date.now()
+    const touchUpdatedAt = options?.touchUpdatedAt === true
+
+    try {
+        const result = db.prepare(`
+            UPDATE sessions
+            SET permission_mode = @permission_mode,
+                updated_at = CASE WHEN @touch_updated_at = 1 THEN @updated_at ELSE updated_at END,
+                seq = seq + 1
+            WHERE id = @id
+              AND namespace = @namespace
+              AND permission_mode IS NOT @permission_mode
+        `).run({
+            id,
+            namespace,
+            permission_mode: permissionMode,
             updated_at: now,
             touch_updated_at: touchUpdatedAt ? 1 : 0
         })

@@ -19,6 +19,7 @@ export const codexCommand: CommandDefinition = {
                 codexArgs?: string[]
                 permissionMode?: CodexPermissionMode
                 resumeSessionId?: string
+                hapiSessionId?: string
                 model?: string
                 modelReasoningEffort?: string
             } = {}
@@ -37,6 +38,12 @@ export const codexCommand: CommandDefinition = {
                 }
                 if (arg === '--started-by') {
                     options.startedBy = commandArgs[++i] as 'runner' | 'terminal'
+                } else if (arg === '--session-id') {
+                    const sessionId = commandArgs[++i]
+                    if (!sessionId) {
+                        throw new Error('Missing --session-id value')
+                    }
+                    options.hapiSessionId = sessionId
                 } else if (arg === '--permission-mode') {
                     const mode = commandArgs[++i]
                     const parsed = PermissionModeSchema.safeParse(mode)

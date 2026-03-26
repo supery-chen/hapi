@@ -80,6 +80,27 @@ describe('session model', () => {
         expect(store.sessions.getSession(session.id)?.model).toBeNull()
     })
 
+    it('persists permission mode updates across refresh', () => {
+        const store = new Store(':memory:')
+        const events: SyncEvent[] = []
+        const cache = new SessionCache(store, createPublisher(events))
+
+        const session = cache.getOrCreateSession(
+            'session-permission-mode-config',
+            { path: '/tmp/project', host: 'localhost', flavor: 'codex' },
+            null,
+            'default',
+            'gpt-5.4'
+        )
+
+        cache.applySessionConfig(session.id, { permissionMode: 'safe-yolo' })
+        expect(cache.getSession(session.id)?.permissionMode).toBe('safe-yolo')
+        expect(store.sessions.getSession(session.id)?.permissionMode).toBe('safe-yolo')
+
+        const refreshed = cache.refreshSession(session.id)
+        expect(refreshed?.permissionMode).toBe('safe-yolo')
+    })
+
     it('persists keepalive model changes, including clearing the model', () => {
         const store = new Store(':memory:')
         const events: SyncEvent[] = []
@@ -278,6 +299,101 @@ describe('session model', () => {
             expect(result).toEqual({ type: 'success', sessionId: spawnedSessionId! })
             expect(engine.getSession(session.id)).toBeUndefined()
             expect(store.messages.getMessages(spawnedSessionId!)).toHaveLength(1)
+        } finally {
+            engine.stop()
+        }
+    })
+
+    it('uses dedicated upgrade restore flow to preserve the original session id and config', async () => {
+        const store = new Store(':memory:')
+        const engine = new SyncEngine(
+            store,
+            {} as never,
+            new RpcRegistry(),
+            { broadcast() {} } as never
+        )
+
+        try {
+            const session = engine.getOrCreateSession(
+                'session-upgrade-restore',
+                {
+                    path: '/tmp/project',
+                    host: 'localhost',
+                    machineId: 'machine-1',
+                    flavor: 'codex',
+                    codexSessionId: 'codex-thread-restore',
+                    modelReasoningEffort: 'high',
+                    worktree: {
+                        basePath: '/tmp/project',
+                        branch: 'feature/test',
+                        name: 'wt-feature-test'
+                    }
+                },
+                null,
+                'default',
+                'gpt-5.4'
+            )
+            store.sessions.setSessionPermissionMode(session.id, 'safe-yolo', 'default')
+            session.permissionMode = 'safe-yolo'
+            session.collaborationMode = 'plan'
+
+            engine.getOrCreateMachine(
+                'machine-1',
+                { host: 'localhost', platform: 'linux', happyCliVersion: '0.1.0' },
+                null,
+                'default'
+            )
+            engine.handleMachineAlive({ machineId: 'machine-1', time: Date.now() })
+
+            let capturedArgs: Record<string, unknown> | null = null
+            let capturedAppliedConfig: Record<string, unknown> | null = null
+            ;(engine as any).rpcGateway.spawnSession = async (
+                machineId: string,
+                directory: string,
+                agent: string,
+                model?: string,
+                modelReasoningEffort?: string,
+                permissionMode?: string,
+                _sessionType?: string,
+                _worktreeName?: string,
+                resumeSessionId?: string,
+                preferredSessionId?: string
+            ) => {
+                capturedArgs = {
+                    machineId,
+                    directory,
+                    agent,
+                    model,
+                    modelReasoningEffort,
+                    permissionMode,
+                    resumeSessionId,
+                    preferredSessionId
+                }
+                return { type: 'success', sessionId: session.id }
+            }
+            ;(engine as any).applySessionConfig = async (_sessionId: string, config: Record<string, unknown>) => {
+                capturedAppliedConfig = config
+            }
+            ;(engine as any).waitForSessionActive = async () => true
+
+            const result = await engine.restoreSessionForUpgrade(session.id, 'default')
+
+            expect(result).toEqual({ type: 'success', sessionId: session.id })
+            expect(capturedArgs).not.toBeNull()
+            expect(capturedArgs!).toEqual({
+                machineId: 'machine-1',
+                directory: '/tmp/project',
+                agent: 'codex',
+                model: 'gpt-5.4',
+                modelReasoningEffort: 'high',
+                permissionMode: 'safe-yolo',
+                resumeSessionId: 'codex-thread-restore',
+                preferredSessionId: session.id
+            })
+            expect(capturedAppliedConfig).not.toBeNull()
+            expect(capturedAppliedConfig!).toEqual({
+                collaborationMode: 'plan'
+            })
         } finally {
             engine.stop()
         }

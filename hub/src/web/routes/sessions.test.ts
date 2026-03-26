@@ -52,9 +52,14 @@ function createApp(session: Session) {
     const applySessionConfig = async (sessionId: string, config: { collaborationMode: string }) => {
         applySessionConfigCalls.push([sessionId, config])
     }
+    const restoreSessionForUpgradeCalls: string[] = []
     const engine = {
         resolveSessionAccess: () => ({ ok: true, sessionId: session.id, session }),
-        applySessionConfig
+        applySessionConfig,
+        restoreSessionForUpgrade: async (sessionId: string) => {
+            restoreSessionForUpgradeCalls.push(sessionId)
+            return { type: 'success', sessionId }
+        }
     } as Partial<SyncEngine>
 
     const app = new Hono<WebAppEnv>()
@@ -64,7 +69,7 @@ function createApp(session: Session) {
     })
     app.route('/api', createSessionsRoutes(() => engine as SyncEngine))
 
-    return { app, applySessionConfigCalls }
+    return { app, applySessionConfigCalls, restoreSessionForUpgradeCalls }
 }
 
 describe('sessions routes', () => {
@@ -111,5 +116,19 @@ describe('sessions routes', () => {
         expect(applySessionConfigCalls).toEqual([
             ['session-1', { collaborationMode: 'plan' }]
         ])
+    })
+
+    it('exposes upgrade restore route without changing regular resume semantics', async () => {
+        const { app, restoreSessionForUpgradeCalls } = createApp(createSession({
+            active: false
+        }))
+
+        const response = await app.request('/api/sessions/session-1/restore-upgrade', {
+            method: 'POST'
+        })
+
+        expect(response.status).toBe(200)
+        expect(await response.json()).toEqual({ type: 'success', sessionId: 'session-1' })
+        expect(restoreSessionForUpgradeCalls).toEqual(['session-1'])
     })
 })

@@ -344,7 +344,9 @@ export async function startRunner(): Promise<void> {
           args.push('--permission-mode', permissionMode);
         }
 
-        // sessionId reserved for future use
+        if (sessionId) {
+          args.push('--session-id', sessionId);
+        }
         const MAX_TAIL_CHARS = 4000;
         let stderrTail = '';
         const appendTail = (current: string, chunk: Buffer | string): string => {

@@ -14,6 +14,30 @@ describe('Store namespace filtering', () => {
         expect(ids).not.toContain(sessionBeta.id)
     })
 
+    it('supports creating or reusing a session with a preferred id', () => {
+        const store = new Store(':memory:')
+        const session = store.sessions.getOrCreateSessionWithId(
+            'tag-preferred',
+            { path: '/alpha' },
+            null,
+            'alpha',
+            'gpt-5.4',
+            'preferred-session-id'
+        )
+
+        const same = store.sessions.getOrCreateSessionWithId(
+            'another-tag',
+            { path: '/alpha' },
+            null,
+            'alpha',
+            'gpt-5.4',
+            'preferred-session-id'
+        )
+
+        expect(session.id).toBe('preferred-session-id')
+        expect(same.id).toBe('preferred-session-id')
+    })
+
     it('filters machines by namespace and blocks mismatches', () => {
         const store = new Store(':memory:')
         const machineAlpha = store.machines.getOrCreateMachine('machine-1', { host: 'alpha' }, null, 'alpha')
