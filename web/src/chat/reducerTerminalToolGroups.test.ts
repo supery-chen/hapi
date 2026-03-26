@@ -43,6 +43,7 @@ describe('mergeTerminalToolGroupBlocks', () => {
         expect(result[0]?.kind).toBe('terminal-tool-group')
         if (result[0]?.kind === 'terminal-tool-group') {
             expect(result[0].blocks.map((block) => block.id)).toEqual(['tool-1', 'tool-2', 'tool-3'])
+            expect(result[0].id).toBe('terminal-tool-group:tool-3')
         }
     })
 

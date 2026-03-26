@@ -12,9 +12,10 @@ export function isTerminalToolBlock(block: ChatBlock): block is ToolCallBlock {
 
 function createTerminalToolGroupBlock(blocks: ToolCallBlock[]): TerminalToolGroupBlock {
     const first = blocks[0]!
+    const last = blocks[blocks.length - 1]!
     return {
         kind: 'terminal-tool-group',
-        id: `terminal-tool-group:${first.id}`,
+        id: `terminal-tool-group:${last.id}`,
         createdAt: first.createdAt,
         blocks
     }

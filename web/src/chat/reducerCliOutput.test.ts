@@ -35,7 +35,7 @@ describe('mergeCliOutputBlocks', () => {
         expect(result[0]?.kind).toBe('cli-output-group')
         if (result[0]?.kind === 'cli-output-group') {
             expect(result[0].blocks.map((block) => block.id)).toEqual(['cli-1', 'cli-2', 'cli-3'])
-            expect(result[0].id).toBe('cli-group:cli-1')
+            expect(result[0].id).toBe('cli-group:cli-3')
         }
     })
 

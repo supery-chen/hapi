@@ -47,9 +47,10 @@ export function createCliOutputBlock(props: {
 
 function createCliOutputGroupBlock(blocks: CliOutputBlock[]): CliOutputGroupBlock {
     const first = blocks[0]!
+    const last = blocks[blocks.length - 1]!
     return {
         kind: 'cli-output-group',
-        id: `cli-group:${first.id}`,
+        id: `cli-group:${last.id}`,
         createdAt: first.createdAt,
         source: first.source,
         blocks

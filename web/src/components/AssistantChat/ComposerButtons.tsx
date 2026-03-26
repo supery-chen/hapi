@@ -137,6 +137,8 @@ function UnifiedButton(props: {
 export function ComposerButtons(props: {
     canSend: boolean
     controlsDisabled: boolean
+    onQuickInsertAt: () => void
+    onQuickInsertSlash: () => void
     showSettingsButton: boolean
     onSettingsToggle: () => void
     showTerminalButton: boolean
@@ -153,6 +155,28 @@ export function ComposerButtons(props: {
     return (
         <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-1">
+                <button
+                    type="button"
+                    aria-label={t('composer.insertAt')}
+                    title={t('composer.insertAt')}
+                    disabled={props.controlsDisabled}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold text-[var(--app-fg)]/60 transition-colors hover:bg-[var(--app-bg)] hover:text-[var(--app-fg)] disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={props.onQuickInsertAt}
+                >
+                    @
+                </button>
+
+                <button
+                    type="button"
+                    aria-label={t('composer.insertSlash')}
+                    title={t('composer.insertSlash')}
+                    disabled={props.controlsDisabled}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold text-[var(--app-fg)]/60 transition-colors hover:bg-[var(--app-bg)] hover:text-[var(--app-fg)] disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={props.onQuickInsertSlash}
+                >
+                    /
+                </button>
+
                 <ComposerPrimitive.AddAttachment
                     aria-label={t('composer.attach')}
                     title={t('composer.attach')}

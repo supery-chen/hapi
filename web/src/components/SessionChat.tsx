@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import type { ApiClient } from '@/api/client'
@@ -8,9 +8,10 @@ import type { Suggestion } from '@/hooks/useActiveSuggestions'
 import { normalizeDecryptedMessage } from '@/chat/normalize'
 import { reduceChatBlocks } from '@/chat/reducer'
 import { reconcileChatBlocks } from '@/chat/reconcile'
+import { HappyChatProvider } from '@/components/AssistantChat/context'
 import { HappyComposer } from '@/components/AssistantChat/HappyComposer'
-import { HappyThread } from '@/components/AssistantChat/HappyThread'
-import { useHappyRuntime } from '@/lib/assistant-runtime'
+import { SessionTimeline } from '@/components/SessionTimeline'
+import { useHappyComposerRuntime } from '@/lib/assistant-runtime'
 import { createAttachmentAdapter } from '@/lib/attachmentAdapter'
 import { SessionHeader } from '@/components/SessionHeader'
 import { TeamPanel } from '@/components/TeamPanel'
@@ -43,7 +44,6 @@ export function SessionChat(props: {
     const sessionInactive = !props.session.active
     const normalizedCacheRef = useRef<Map<string, { source: DecryptedMessage; normalized: NormalizedMessage | null }>>(new Map())
     const blocksByIdRef = useRef<Map<string, ChatBlock>>(new Map())
-    const [forceScrollToken, setForceScrollToken] = useState(0)
     const agentFlavor = props.session.metadata?.flavor ?? null
     const codexCollaborationModeSupported = agentFlavor === 'codex'
     const { abortSession, setPermissionMode, setCollaborationMode } = useSessionActions(
@@ -154,10 +154,7 @@ export function SessionChat(props: {
         sessionId: props.session.id,
         thinking: props.session.thinking,
         isSending: props.isSending,
-        onSend: props.onSend,
-        onDispatched: () => {
-            setForceScrollToken((token) => token + 1)
-        }
+        onSend: props.onSend
     })
 
     const handleSend = useCallback((text: string, attachments?: AttachmentMetadata[]) => {
@@ -174,15 +171,30 @@ export function SessionChat(props: {
         return createAttachmentAdapter(props.api, props.session.id)
     }, [props.api, props.session.id, props.session.active])
 
-    const runtime = useHappyRuntime({
+    const runtime = useHappyComposerRuntime({
         session: props.session,
-        blocks: reconciled.blocks,
         isSending: props.isSending,
         onSendMessage: handleSend,
         onAbort: handleAbort,
         attachmentAdapter,
         allowSendWhenInactive: true
     })
+
+    const chatContextValue = useMemo(() => ({
+        api: props.api,
+        sessionId: props.session.id,
+        metadata: props.session.metadata,
+        disabled: sessionInactive,
+        onRefresh: props.onRefresh,
+        onRetryMessage: props.onRetryMessage
+    }), [
+        props.api,
+        props.session.id,
+        props.session.metadata,
+        sessionInactive,
+        props.onRefresh,
+        props.onRetryMessage
+    ])
 
     return (
         <div className="flex h-full flex-col">
@@ -210,27 +222,22 @@ export function SessionChat(props: {
 
             <AssistantRuntimeProvider runtime={runtime}>
                 <div className="relative flex min-h-0 flex-1 flex-col">
-                    <HappyThread
-                        key={props.session.id}
-                        api={props.api}
-                        sessionId={props.session.id}
-                        metadata={props.session.metadata}
-                        disabled={sessionInactive}
-                        onRefresh={props.onRefresh}
-                        onRetryMessage={props.onRetryMessage}
-                        onFlushPending={props.onFlushPending}
-                        onAtBottomChange={props.onAtBottomChange}
-                        isLoadingMessages={props.isLoadingMessages}
-                        messagesWarning={props.messagesWarning}
-                        hasMoreMessages={props.hasMoreMessages}
-                        isLoadingMoreMessages={props.isLoadingMoreMessages}
-                        onLoadMore={props.onLoadMore}
-                        pendingCount={props.pendingCount}
-                        rawMessagesCount={props.messages.length}
-                        normalizedMessagesCount={normalizedMessages.length}
-                        messagesVersion={props.messagesVersion}
-                        forceScrollToken={forceScrollToken}
-                    />
+                    <HappyChatProvider value={chatContextValue}>
+                        <SessionTimeline
+                            key={props.session.id}
+                            blocks={reconciled.blocks}
+                            messagesWarning={props.messagesWarning}
+                            hasMoreMessages={props.hasMoreMessages}
+                            isLoadingMessages={props.isLoadingMessages}
+                            isLoadingMoreMessages={props.isLoadingMoreMessages}
+                            pendingCount={props.pendingCount}
+                            rawMessagesCount={props.messages.length}
+                            normalizedMessagesCount={normalizedMessages.length}
+                            onLoadMore={props.onLoadMore}
+                            onFlushPending={props.onFlushPending}
+                            onAtBottomChange={props.onAtBottomChange}
+                        />
+                    </HappyChatProvider>
 
                     <HappyComposer
                         disabled={props.isSending}

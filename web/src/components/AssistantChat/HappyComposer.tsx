@@ -26,6 +26,7 @@ import { StatusBar } from '@/components/AssistantChat/StatusBar'
 import { ComposerButtons } from '@/components/AssistantChat/ComposerButtons'
 import { AttachmentItem } from '@/components/AssistantChat/AttachmentItem'
 import { useTranslation } from '@/lib/use-translation'
+import { getComposerKeyAction } from './composerKeyBehavior'
 import { getCodexComposerModelOptions, getNextCodexComposerModel } from './codexModelOptions'
 
 export interface TextInputState {
@@ -229,6 +230,16 @@ export function HappyComposer(props: {
             return
         }
 
+        const keyAction = getComposerKeyAction({
+            key,
+            isTouch,
+            suggestionsOpen: suggestions.length > 0,
+            shiftKey: e.shiftKey,
+            ctrlKey: e.ctrlKey,
+            altKey: e.altKey,
+            metaKey: e.metaKey
+        })
+
         if (suggestions.length > 0) {
             if (key === 'ArrowUp') {
                 e.preventDefault()
@@ -240,7 +251,7 @@ export function HappyComposer(props: {
                 moveDown()
                 return
             }
-            if ((key === 'Enter' || key === 'Tab') && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            if (keyAction === 'select-suggestion') {
                 e.preventDefault()
                 const indexToSelect = selectedIndex >= 0 ? selectedIndex : 0
                 handleSuggestionSelect(indexToSelect)
@@ -253,7 +264,7 @@ export function HappyComposer(props: {
             }
         }
 
-        if (key === 'Enter') {
+        if (keyAction === 'submit') {
             e.preventDefault()
             if (!canSubmit) return
             api.composer().send()
@@ -281,6 +292,7 @@ export function HappyComposer(props: {
         moveDown,
         clearSuggestions,
         handleSuggestionSelect,
+        isTouch,
         threadIsRunning,
         handleAbort,
         onPermissionModeChange,
@@ -341,6 +353,34 @@ export function HappyComposer(props: {
         haptic('light')
         setShowSettings(prev => !prev)
     }, [haptic])
+
+    const handleQuickInsert = useCallback((value: '@' | '/') => {
+        if (controlsDisabled) return
+
+        const nextText = inputState.text.slice(0, inputState.selection.start)
+            + value
+            + inputState.text.slice(inputState.selection.end)
+        const nextCursor = inputState.selection.start + value.length
+
+        api.composer().setText(nextText)
+        setInputState({
+            text: nextText,
+            selection: { start: nextCursor, end: nextCursor }
+        })
+
+        setTimeout(() => {
+            const el = textareaRef.current
+            if (!el) return
+            el.setSelectionRange(nextCursor, nextCursor)
+            try {
+                el.focus({ preventScroll: true })
+            } catch {
+                el.focus()
+            }
+        }, 0)
+
+        haptic('light')
+    }, [api, controlsDisabled, haptic, inputState])
 
     const handleSubmit = useCallback((event?: ReactFormEvent<HTMLFormElement>) => {
         if (event && !attachmentsReady) {
@@ -638,6 +678,8 @@ export function HappyComposer(props: {
                         <ComposerButtons
                             canSend={canSubmit}
                             controlsDisabled={controlsDisabled}
+                            onQuickInsertAt={() => handleQuickInsert('@')}
+                            onQuickInsertSlash={() => handleQuickInsert('/')}
                             showSettingsButton={showSettingsButton}
                             onSettingsToggle={handleSettingsToggle}
                             showTerminalButton={showTerminalButton}

@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { CliOutputBlock as CliOutputBlockType } from '@/chat/types'
 import { CliOutputBlock, extractCommandName } from '@/components/CliOutputBlock'
+import { usePersistentGroupOpenState } from '@/lib/collapsible-group-state'
 import { useTranslation } from '@/lib/use-translation'
 
 function Chevron(props: { open: boolean }) {
@@ -20,7 +21,11 @@ export function CliOutputGroup(props: {
     source: 'user' | 'assistant'
 }) {
     const { t } = useTranslation()
-    const [open, setOpen] = useState(false)
+    const memberIds = useMemo(
+        () => props.blocks.map((block) => block.id),
+        [props.blocks]
+    )
+    const [open, setOpen] = usePersistentGroupOpenState(memberIds, false)
 
     const preview = useMemo(() => {
         const labels = props.blocks

@@ -149,6 +149,8 @@ function toThreadMessageLike(block: ChatBlock): ThreadMessageLike {
 
 type TextMessagePart = { type: 'text'; text: string }
 
+const EMPTY_THREAD_MESSAGES: ThreadMessageLike[] = []
+
 function getTextFromParts(parts: readonly { type: string }[] | undefined): string {
     if (!parts) return ''
 
@@ -245,6 +247,46 @@ export function useHappyRuntime(props: {
         props.allowSendWhenInactive,
         props.session.thinking,
         convertedMessages,
+        onNew,
+        onCancel,
+        props.attachmentAdapter
+    ])
+
+    return useExternalStoreRuntime(adapter)
+}
+
+export function useHappyComposerRuntime(props: {
+    session: Session
+    isSending: boolean
+    onSendMessage: (text: string, attachments?: AttachmentMetadata[]) => void
+    onAbort: () => Promise<void>
+    attachmentAdapter?: AttachmentAdapter
+    allowSendWhenInactive?: boolean
+}) {
+    const onNew = useCallback(async (message: AppendMessage) => {
+        const { text, attachments } = extractMessageContent(message)
+        if (!text && attachments.length === 0) return
+        props.onSendMessage(text, attachments.length > 0 ? attachments : undefined)
+    }, [props.onSendMessage])
+
+    const onCancel = useCallback(async () => {
+        await props.onAbort()
+    }, [props.onAbort])
+
+    const adapter = useMemo(() => ({
+        isDisabled: props.isSending || (!props.session.active && !props.allowSendWhenInactive),
+        isRunning: props.session.thinking,
+        messages: EMPTY_THREAD_MESSAGES,
+        convertMessage: (message: ThreadMessageLike) => message,
+        onNew,
+        onCancel,
+        adapters: props.attachmentAdapter ? { attachments: props.attachmentAdapter } : undefined,
+        unstable_capabilities: { copy: true }
+    }), [
+        props.session.active,
+        props.isSending,
+        props.allowSendWhenInactive,
+        props.session.thinking,
         onNew,
         onCancel,
         props.attachmentAdapter

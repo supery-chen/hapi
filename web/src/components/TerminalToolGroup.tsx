@@ -1,8 +1,9 @@
 import type { ApiClient } from '@/api/client'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { SessionMetadataSummary } from '@/types/api'
 import type { ToolCallBlock } from '@/chat/types'
 import { ToolCard } from '@/components/ToolCard/ToolCard'
+import { usePersistentGroupOpenState } from '@/lib/collapsible-group-state'
 import { useTranslation } from '@/lib/use-translation'
 import { getInputStringAny, truncate } from '@/lib/toolInputUtils'
 
@@ -40,7 +41,15 @@ export function TerminalToolGroup(props: {
     disabled: boolean
 }) {
     const { t } = useTranslation()
-    const [open, setOpen] = useState(false)
+    const memberIds = useMemo(
+        () => props.blocks.map((block) => block.id),
+        [props.blocks]
+    )
+    const defaultOpen = useMemo(
+        () => props.blocks.some((block) => block.tool.state === 'pending' || block.tool.state === 'error'),
+        [props.blocks]
+    )
+    const [open, setOpen] = usePersistentGroupOpenState(memberIds, defaultOpen)
 
     const preview = useMemo(() => {
         return props.blocks
@@ -48,6 +57,24 @@ export function TerminalToolGroup(props: {
             .filter((value): value is string => Boolean(value))
             .slice(0, 2)
             .join(' • ')
+    }, [props.blocks])
+
+    const statusCounts = useMemo(() => {
+        let running = 0
+        let pending = 0
+        let error = 0
+
+        for (const block of props.blocks) {
+            if (block.tool.state === 'running') {
+                running += 1
+            } else if (block.tool.state === 'pending') {
+                pending += 1
+            } else if (block.tool.state === 'error') {
+                error += 1
+            }
+        }
+
+        return { running, pending, error }
     }, [props.blocks])
 
     return (
@@ -72,6 +99,25 @@ export function TerminalToolGroup(props: {
                             {preview ? (
                                 <div className="truncate text-xs text-[var(--app-hint)]">
                                     {preview}
+                                </div>
+                            ) : null}
+                            {statusCounts.pending > 0 || statusCounts.running > 0 || statusCounts.error > 0 ? (
+                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                    {statusCounts.pending > 0 ? (
+                                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                                            {statusCounts.pending} pending
+                                        </span>
+                                    ) : null}
+                                    {statusCounts.running > 0 ? (
+                                        <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-600">
+                                            {statusCounts.running} running
+                                        </span>
+                                    ) : null}
+                                    {statusCounts.error > 0 ? (
+                                        <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600">
+                                            {statusCounts.error} error
+                                        </span>
+                                    ) : null}
                                 </div>
                             ) : null}
                         </div>
