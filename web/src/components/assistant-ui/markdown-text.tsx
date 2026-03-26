@@ -1,6 +1,5 @@
 import type { ComponentPropsWithoutRef } from 'react'
 import {
-    MarkdownTextPrimitive,
     unstable_memoizeMarkdownComponents as memoizeMarkdownComponents,
     useIsMarkdownCodeBlock,
     type CodeHeaderProps,
@@ -219,13 +218,3 @@ export const defaultComponents = memoizeMarkdownComponents({
     td: Td,
     img: Image,
 } as const)
-
-export function MarkdownText() {
-    return (
-        <MarkdownTextPrimitive
-            remarkPlugins={MARKDOWN_PLUGINS}
-            components={defaultComponents}
-            className={cn('aui-md min-w-0 max-w-full break-words text-base')}
-        />
-    )
-}
