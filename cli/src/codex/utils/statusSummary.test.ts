@@ -33,8 +33,8 @@ describe('statusSummary', () => {
             outputTokens: 466,
             reasoningOutputTokens: 111,
             modelContextWindow: 950_000,
-            contextUsedTokens: 12_226,
-            contextLeftPercent: 99
+            contextUsedTokens: 900,
+            contextLeftPercent: 99.91
         });
     });
 
@@ -52,7 +52,7 @@ describe('statusSummary', () => {
             outputTokens: 30,
             reasoningOutputTokens: 0,
             modelContextWindow: null,
-            contextUsedTokens: 100,
+            contextUsedTokens: 120,
             contextLeftPercent: null
         });
     });
@@ -83,8 +83,8 @@ describe('statusSummary', () => {
             outputTokens: 466,
             reasoningOutputTokens: 111,
             modelContextWindow: 950_000,
-            contextUsedTokens: 12_226,
-            contextLeftPercent: 99
+            contextUsedTokens: 900,
+            contextLeftPercent: 99.91
         });
     });
 });

@@ -91,6 +91,7 @@ export function HappyThread(props: {
     const onAtBottomChangeRef = useRef(props.onAtBottomChange)
     const onFlushPendingRef = useRef(props.onFlushPending)
     const forceScrollTokenRef = useRef(props.forceScrollToken)
+    const lastScrollTopRef = useRef(0)
 
     // Smart scroll state: autoScroll enabled when user is near bottom
     const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
@@ -122,15 +123,24 @@ export function HappyThread(props: {
         if (!viewport) return
 
         const THRESHOLD_PX = 120
+        const USER_SCROLL_UP_EPSILON_PX = 4
 
         const handleScroll = () => {
-            const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight
+            const currentScrollTop = viewport.scrollTop
+            const distanceFromBottom = viewport.scrollHeight - currentScrollTop - viewport.clientHeight
             const isNearBottom = distanceFromBottom < THRESHOLD_PX
+            const scrolledUp = currentScrollTop < lastScrollTopRef.current - USER_SCROLL_UP_EPSILON_PX
 
-            if (isNearBottom) {
-                if (!autoScrollEnabledRef.current) setAutoScrollEnabled(true)
-            } else if (autoScrollEnabledRef.current) {
-                setAutoScrollEnabled(false)
+            if (scrolledUp) {
+                if (autoScrollEnabledRef.current) {
+                    autoScrollEnabledRef.current = false
+                    setAutoScrollEnabled(false)
+                }
+            } else if (isNearBottom) {
+                if (!autoScrollEnabledRef.current) {
+                    autoScrollEnabledRef.current = true
+                    setAutoScrollEnabled(true)
+                }
             }
 
             if (isNearBottom !== atBottomRef.current) {
@@ -140,9 +150,12 @@ export function HappyThread(props: {
                     onFlushPendingRef.current()
                 }
             }
+
+            lastScrollTopRef.current = currentScrollTop
         }
 
         viewport.addEventListener('scroll', handleScroll, { passive: true })
+        handleScroll()
         return () => viewport.removeEventListener('scroll', handleScroll)
     }, []) // Stable: no dependencies, reads from refs
 
@@ -151,7 +164,9 @@ export function HappyThread(props: {
         const viewport = viewportRef.current
         if (viewport) {
             viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
+            lastScrollTopRef.current = viewport.scrollTop
         }
+        autoScrollEnabledRef.current = true
         setAutoScrollEnabled(true)
         if (!atBottomRef.current) {
             atBottomRef.current = true
@@ -162,8 +177,10 @@ export function HappyThread(props: {
 
     // Reset state when session changes
     useEffect(() => {
+        autoScrollEnabledRef.current = true
         setAutoScrollEnabled(true)
         atBottomRef.current = true
+        lastScrollTopRef.current = 0
         onAtBottomChangeRef.current(true)
         forceScrollTokenRef.current = props.forceScrollToken
     }, [props.sessionId])
@@ -250,6 +267,7 @@ export function HappyThread(props: {
         }
         const delta = viewport.scrollHeight - pending.scrollHeight
         viewport.scrollTop = pending.scrollTop + delta
+        lastScrollTopRef.current = viewport.scrollTop
         pendingScrollRef.current = null
         loadLockRef.current = false
     }, [props.messagesVersion])
